@@ -1,9 +1,11 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from app.db_utils import ensure_users_table_columns, engine
-from app.settings import BASE_DIR, DATA_DIR, SECRET_KEY, UPLOADS_DIR
+from app.proxy_middleware import FixUpstreamHostMiddleware
+from app.settings import BASE_DIR, DATA_DIR, PUBLIC_BASE_URL, SECRET_KEY, TRUST_PROXY, UPLOADS_DIR
 from models import Base
 from routes.accounts import router as accounts_router
 from routes.cloud import router as cloud_router
@@ -13,6 +15,9 @@ from routes.social import router as social_router
 
 app = FastAPI(title="FBE cloud")
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
+app.add_middleware(FixUpstreamHostMiddleware, public_base_url=PUBLIC_BASE_URL)
+if TRUST_PROXY:
+    app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
 
