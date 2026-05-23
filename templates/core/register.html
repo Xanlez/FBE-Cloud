@@ -1,11 +1,11 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 
 {% block title %}Регистрация — FBE cloud{% endblock %}
 
 {% block content %}
 <h1 class="page-title">Регистрация</h1>
 <div class="card form-card">
-  <form method="post" action="{{ request.url_for('register_post') }}">
+  <form method="post" action="{{ path_for(request, 'register_post') }}">
     <div class="form-group">
       <label for="id_username">Имя пользователя</label>
       <input id="id_username" name="username" class="form-input" value="{{ values.get('username', '') }}" required>
@@ -29,7 +29,7 @@
     <button type="submit" class="btn btn-primary" style="width:100%; margin-top:0.5rem;">Создать аккаунт</button>
   </form>
   <p style="margin-top:1.25rem; text-align:center; color: var(--muted); font-size:0.9rem;">
-    Уже есть аккаунт? <a href="{{ request.url_for('login') }}">Войти</a>
+    Уже есть аккаунт? <a href="{{ path_for(request, 'login') }}">Войти</a>
   </p>
 </div>
 {% endblock %}

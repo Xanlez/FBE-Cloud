@@ -1,4 +1,4 @@
-{% from "core/macros/demo_push.html" import demo_push_notice %}
+﻿{% from "core/macros/demo_push.html" import demo_push_notice %}
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -16,16 +16,16 @@
           <span></span><span></span><span></span>
         </button>
       {% endif %}
-      <a href="{{ request.url_for('home') }}" class="brand-wrap">
-        <img src="{{ request.url_for('logo_fbe') }}" alt="FBE cloud" class="brand-logo">
+      <a href="{{ path_for(request, 'home') }}" class="brand-wrap">
+        <img src="{{ path_for(request, 'logo_fbe') }}" alt="FBE cloud" class="brand-logo">
       </a>
     </div>
     <nav class="nav">
       {% if user %}
-        <a href="{{ request.url_for('profile') }}" class="user-pill user-pill-link">
+        <a href="{{ path_for(request, 'profile') }}" class="user-pill user-pill-link">
           {% set avatar = user|avatar_file %}
           {% if avatar %}
-            <img src="{{ request.url_for('uploads', path=avatar) }}" alt="" class="nav-user-avatar">
+            <img src="{{ path_for(request, 'uploads', path=avatar) }}" alt="" class="nav-user-avatar">
           {% else %}
             <span class="nav-user-avatar nav-user-avatar-placeholder">{{ user.username[0]|upper }}</span>
           {% endif %}
@@ -33,8 +33,8 @@
         </a>
       {% else %}
         <div class="nav-actions">
-          <a href="{{ request.url_for('login') }}" class="btn btn-ghost">Вход</a>
-          <a href="{{ request.url_for('register') }}" class="btn btn-primary">Регистрация</a>
+          <a href="{{ path_for(request, 'login') }}" class="btn btn-ghost">Вход</a>
+          <a href="{{ path_for(request, 'register') }}" class="btn btn-primary">Регистрация</a>
         </div>
       {% endif %}
     </nav>
@@ -60,12 +60,12 @@
           <span></span><span></span><span></span>
         </button>
       </div>
-      <a href="{{ request.url_for('home') }}">Главная</a>
-      <a href="{{ request.url_for('files') }}">Мои файлы</a>
-      <a href="{{ request.url_for('social') }}">Друзья и чат</a>
-      <a href="{{ request.url_for('shared_cloud') }}">Общее облако</a>
-      <a href="{{ request.url_for('events_cloud') }}">События</a>
-      {% if user.is_personnel %}<a href="{{ request.url_for('admin') }}">Админка</a>{% endif %}
+      <a href="{{ path_for(request, 'home') }}">Главная</a>
+      <a href="{{ path_for(request, 'files') }}">Мои файлы</a>
+      <a href="{{ path_for(request, 'social') }}">Друзья и чат</a>
+      <a href="{{ path_for(request, 'shared_cloud') }}">Общее облако</a>
+      <a href="{{ path_for(request, 'events_cloud') }}">События</a>
+      {% if user.is_personnel %}<a href="{{ path_for(request, 'admin') }}">Админка</a>{% endif %}
     </aside>
     <script>
       (() => {

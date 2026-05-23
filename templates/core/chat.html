@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 
 {% block title %}Чат с {{ friend.username }} — FBE cloud{% endblock %}
 
@@ -29,7 +29,7 @@
 
 <div class="card form-card">
   <h2 style="margin-top:0;">Отправить сообщение</h2>
-  <form method="post" action="{{ request.url_for('social_chat_send', friend_id=friend.id) }}">
+  <form method="post" action="{{ path_for(request, 'social_chat_send', friend_id=friend.id) }}">
     <div class="form-group">
       <label for="id_text">Текст</label>
       <input id="id_text" name="text_message" class="form-input" placeholder="Напишите сообщение">

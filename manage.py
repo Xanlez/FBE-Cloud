@@ -1,24 +1,17 @@
 import os
+import sys
 
 import uvicorn
 
 
 def main():
     host = os.environ.get("HOST", "127.0.0.1")
-    from app.settings import APP_PORT
+    port = int(os.environ.get("PORT", "1010"))
+    reload = os.environ.get("RELOAD", "0").lower() in ("1", "true", "yes")
 
-    port = APP_PORT
-    reload = os.environ.get("RELOAD", "1").lower() in ("1", "true", "yes")
-    trust_proxy = os.environ.get("TRUST_PROXY", "").lower() in ("1", "true", "yes")
-    uvicorn.run(
-        "main:app",
-        host=host,
-        port=port,
-        reload=reload,
-        proxy_headers=trust_proxy,
-        forwarded_allow_ips=os.environ.get("FORWARDED_ALLOW_IPS", "*"),
-    )
+    uvicorn.run("main:app", host=host, port=port, reload=reload)
 
 
 if __name__ == "__main__":
+    # python manage.py  или  python manage.py runserver
     main()

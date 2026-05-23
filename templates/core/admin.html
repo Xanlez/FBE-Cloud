@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 
 {% block title %}Админка — FBE cloud{% endblock %}
 {% block main_class %}main-full{% endblock %}
@@ -148,7 +148,7 @@
           <tr>
             <td>{{ e.id }}</td>
             <td>
-              <a href="{{ request.url_for('event_detail', event_id=e.id) }}">{{ e.title }}</a>
+              <a href="{{ path_for(request, 'event_detail', event_id=e.id) }}">{{ e.title }}</a>
             </td>
             <td>{{ e.creator_username }}</td>
             <td>{{ e.event_date|event_date_ru }}</td>

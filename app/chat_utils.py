@@ -46,7 +46,9 @@ def load_chat_messages(
                 "created_at": m.created_at,
                 "file_name": file_row.file_name if file_row else None,
                 "file_link": (
-                    str(request.url_for("cloud_file_download", file_id=file_row.id))
+                    request.app.url_path_for(
+                        "cloud_file_download", file_id=file_row.id
+                    )
                     if file_row and file_row.storage_name
                     else (file_row.web_view_link if file_row else None)
                 ),

@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 
 {% block title %}События — FBE cloud{% endblock %}
 {% block main_class %}main-full main-messenger{% endblock %}
@@ -16,7 +16,7 @@
       <ul class="messages explorer-messages"><li>{{ success }}</li></ul>
     {% endif %}
 
-    <form method="post" action="{{ request.url_for('events_cloud_create') }}" class="event-sidebar-form events-create-form">
+    <form method="post" action="{{ path_for(request, 'events_cloud_create') }}" class="event-sidebar-form events-create-form">
       <div class="form-group">
         <label for="id_title">Название</label>
         <input id="id_title" name="title" class="form-input" placeholder="Экзамен по матану" required>
@@ -67,7 +67,7 @@
             {% for event in events %}
               <tr class="explorer-row events-row">
                 <td class="col-name">
-                  <a href="{{ request.url_for('event_detail', event_id=event.id) }}" class="events-row-link">
+                  <a href="{{ path_for(request, 'event_detail', event_id=event.id) }}" class="events-row-link">
                     <span class="explorer-file-icon" aria-hidden="true">📅</span>
                     <span class="explorer-file-name">{{ event.title }}</span>
                   </a>
@@ -96,7 +96,7 @@
                 <td class="col-actions">
                   <div class="explorer-actions">
                     <a
-                      href="{{ request.url_for('event_detail', event_id=event.id) }}"
+                      href="{{ path_for(request, 'event_detail', event_id=event.id) }}"
                       class="explorer-action-btn"
                       title="Открыть"
                       aria-label="Открыть"

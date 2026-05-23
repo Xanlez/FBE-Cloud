@@ -77,7 +77,7 @@ def parse_shared_filters_from_form(
 
 
 def shared_cloud_url(request: Request, filters: SharedFilters) -> str:
-    base = str(request.url_for("shared_cloud"))
+    base = request.app.url_path_for("shared_cloud")
     qs = filters.query_string()
     return f"{base}?{qs}" if qs else base
 

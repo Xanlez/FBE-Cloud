@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 {% from "core/macros/filter_hidden.html" import filter_hidden %}
 {% from "core/macros/file_preview.html" import preview_cell, preview_open_action, file_preview_modal, file_preview_script %}
 
@@ -6,7 +6,7 @@
 {% block main_class %}main-full{% endblock %}
 
 {% block content %}
-{% set shared_return_url = request.url_for('shared_cloud') %}
+{% set shared_return_url = path_for(request, 'shared_cloud') %}
 {% if filters.query_string() %}{% set shared_return_url = shared_return_url ~ '?' ~ filters.query_string() %}{% endif %}
 <section class="explorer" id="sharedExplorer">
   <div class="explorer-toolbar">
@@ -26,7 +26,7 @@
     </button>
   </div>
 
-  <form method="get" action="{{ request.url_for('shared_cloud') }}" class="explorer-filters">
+  <form method="get" action="{{ path_for(request, 'shared_cloud') }}" class="explorer-filters">
     <div class="explorer-filters-row">
       <input
         type="search"
@@ -74,7 +74,7 @@
         {% endfor %}
       </select>
       <button type="submit" class="btn btn-primary explorer-filter-submit">Найти</button>
-      <a href="{{ request.url_for('shared_cloud') }}" class="btn btn-ghost explorer-filter-reset">Сбросить</a>
+      <a href="{{ path_for(request, 'shared_cloud') }}" class="btn btn-ghost explorer-filter-reset">Сбросить</a>
     </div>
   </form>
 
@@ -88,7 +88,7 @@
   <form
     id="sharedUploadForm"
     method="post"
-    action="{{ request.url_for('shared_cloud_upload') }}"
+    action="{{ path_for(request, 'shared_cloud_upload') }}"
     enctype="multipart/form-data"
     class="explorer-upload-form"
   >
@@ -122,7 +122,7 @@
                   </span>
                   <span class="explorer-file-name">{{ item.file_name }}</span>
                   {% if item.owner_user_id == user.id %}
-                    <form class="explorer-rename-form" method="post" action="{{ request.url_for('shared_cloud_rename', file_id=item.id) }}" hidden>
+                    <form class="explorer-rename-form" method="post" action="{{ path_for(request, 'shared_cloud_rename', file_id=item.id) }}" hidden>
                       {{ filter_hidden(filters) }}
                       <input type="text" name="file_name" class="explorer-rename-input" value="{{ item.file_name }}" maxlength="255" required>
                       <button type="submit" class="explorer-action-btn" title="Сохранить">✓</button>
@@ -153,7 +153,7 @@
                   {% endif %}
                   {% if item.storage_name %}
                     <a
-                      href="{{ request.url_for('cloud_file_download', file_id=item.id) }}"
+                      href="{{ path_for(request, 'cloud_file_download', file_id=item.id) }}"
                       class="explorer-action-btn"
                       title="Скачать"
                       download
@@ -170,7 +170,7 @@
                   {% if item.owner_user_id == user.id %}
                     <form
                       method="post"
-                      action="{{ request.url_for('shared_cloud_delete', file_id=item.id) }}"
+                      action="{{ path_for(request, 'shared_cloud_delete', file_id=item.id) }}"
                       class="explorer-delete-form"
                       onsubmit="return confirm('Удалить «{{ item.file_name }}»?');"
                     >
@@ -187,7 +187,7 @@
                 <div class="explorer-empty">
                   {% if filters.active() %}
                     <p>Ничего не найдено</p>
-                    <p class="explorer-empty-hint">Измените фильтры или <a href="{{ request.url_for('shared_cloud') }}">сбросьте поиск</a></p>
+                    <p class="explorer-empty-hint">Измените фильтры или <a href="{{ path_for(request, 'shared_cloud') }}">сбросьте поиск</a></p>
                   {% else %}
                     <p>Облако пусто</p>
                     <p class="explorer-empty-hint">Нажмите <strong>+</strong> или перетащите файлы сюда</p>

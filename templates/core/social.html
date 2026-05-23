@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 
 {% block title %}Друзья и чат — FBE cloud{% endblock %}
 {% block main_class %}main-full main-messenger{% endblock %}
@@ -11,7 +11,7 @@
     </div>
 
     <div class="messenger-sidebar-section">
-      <form method="get" action="{{ request.url_for('social') }}" class="messenger-search">
+      <form method="get" action="{{ path_for(request, 'social') }}" class="messenger-search">
         {% if active_chat_id %}
           <input type="hidden" name="chat" value="{{ active_chat_id }}">
         {% endif %}
@@ -42,7 +42,7 @@
                 {% elif row.status == "incoming" %}
                   заявка
                 {% else %}
-                  <form method="post" action="{{ request.url_for('social_request_friend', target_user_id=row.user.id) }}">
+                  <form method="post" action="{{ path_for(request, 'social_request_friend', target_user_id=row.user.id) }}">
                     <button type="submit" class="messenger-inline-btn">+</button>
                   </form>
                 {% endif %}
@@ -62,7 +62,7 @@
             <li class="messenger-friend-item messenger-friend-item-static">
               <span class="messenger-friend-avatar">{{ (sender.username[0] if sender else '?')|upper }}</span>
               <span class="messenger-friend-name">{{ sender.username if sender else ('User #' ~ req.from_user_id) }}</span>
-              <form method="post" action="{{ request.url_for('social_accept_friend', request_id=req.id) }}">
+              <form method="post" action="{{ path_for(request, 'social_accept_friend', request_id=req.id) }}">
                 <button type="submit" class="messenger-inline-btn messenger-inline-btn-primary" title="Принять">✓</button>
               </form>
             </li>
@@ -75,7 +75,7 @@
       <ul class="messenger-friend-list">
         <li>
           <a
-            href="{{ request.url_for('social') }}?chat={{ user.id }}"
+            href="{{ path_for(request, 'social') }}?chat={{ user.id }}"
             class="messenger-friend-item messenger-saved-chat {% if is_saved_chat %}is-active{% endif %}"
           >
             <span class="messenger-friend-avatar messenger-saved-avatar">★</span>
@@ -92,7 +92,7 @@
           {% for friend in friends %}
             <li>
               <a
-                href="{{ request.url_for('social') }}?chat={{ friend.id }}"
+                href="{{ path_for(request, 'social') }}?chat={{ friend.id }}"
                 class="messenger-friend-item {% if active_friend and active_friend.id == friend.id %}is-active{% endif %}"
               >
                 <span class="messenger-friend-avatar">{{ friend.username[0]|upper }}</span>
@@ -147,7 +147,7 @@
       </div>
 
       <footer class="messenger-compose">
-        <form method="post" action="{{ request.url_for('social_chat_send', friend_id=active_friend.id) }}" class="messenger-compose-form">
+        <form method="post" action="{{ path_for(request, 'social_chat_send', friend_id=active_friend.id) }}" class="messenger-compose-form">
           <select name="file_id" class="messenger-compose-attach" title="Прикрепить файл">
             <option value="">📎</option>
             {% for f in own_files %}
@@ -169,7 +169,7 @@
       <div class="messenger-placeholder">
         <div class="messenger-placeholder-icon">💬</div>
         <p>Выберите друга слева, чтобы открыть чат</p>
-        <p class="messenger-placeholder-hint">Или откройте <a href="{{ request.url_for('social') }}?chat={{ user.id }}">Избранное</a> — чат с самим собой</p>
+        <p class="messenger-placeholder-hint">Или откройте <a href="{{ path_for(request, 'social') }}?chat={{ user.id }}">Избранное</a> — чат с самим собой</p>
       </div>
     {% endif %}
   </div>

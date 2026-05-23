@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 
 {% block title %}Подтверждение почты — FBE cloud{% endblock %}
 
@@ -14,7 +14,7 @@
     <ul class="messages"><li class="error">{{ error }}</li></ul>
   {% endif %}
 
-  <form method="post" action="{{ request.url_for('verify_email_post') }}">
+  <form method="post" action="{{ path_for(request, 'verify_email_post') }}">
     <div class="form-group">
       <label for="id_code">Код подтверждения</label>
       <input id="id_code" name="code" class="form-input" maxlength="6" minlength="6" required>
@@ -22,7 +22,7 @@
     <button type="submit" class="btn btn-primary" style="width:100%; margin-top:0.5rem;">Подтвердить</button>
   </form>
 
-  <form method="post" action="{{ request.url_for('verify_email_resend') }}" style="margin-top:0.75rem;">
+  <form method="post" action="{{ path_for(request, 'verify_email_resend') }}" style="margin-top:0.75rem;">
     <button type="submit" class="btn btn-ghost" style="width:100%;">Отправить код заново</button>
   </form>
 </div>

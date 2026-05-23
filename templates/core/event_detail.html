@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 {% from "core/macros/file_preview.html" import preview_cell, preview_open_action, file_preview_modal, file_preview_script %}
 
 {% block title %}{{ event.title }} — FBE cloud{% endblock %}
@@ -7,7 +7,7 @@
 {% block content %}
 <section class="event-explorer">
   <aside class="event-sidebar">
-    <a href="{{ request.url_for('events_cloud') }}" class="event-back-link">← Все события</a>
+    <a href="{{ path_for(request, 'events_cloud') }}" class="event-back-link">← Все события</a>
 
     {% if is_creator %}
       <div id="eventViewMode" class="event-view-panel"{% if show_edit %} hidden{% endif %}>
@@ -21,7 +21,7 @@
 
       <div id="eventEditMode" class="event-edit-panel"{% if not show_edit %} hidden{% endif %}>
         <div class="event-sidebar-label">Изменение события</div>
-        <form method="post" action="{{ request.url_for('event_rename', event_id=event.id) }}" class="event-sidebar-form event-manage-form">
+        <form method="post" action="{{ path_for(request, 'event_rename', event_id=event.id) }}" class="event-sidebar-form event-manage-form">
           <div class="form-group" style="margin-bottom:0.5rem;">
             <label for="id_event_title">Название</label>
             <input id="id_event_title" name="title" class="form-input" value="{{ event.title }}" maxlength="255" required>
@@ -38,7 +38,7 @@
         </form>
         <form
           method="post"
-          action="{{ request.url_for('event_delete', event_id=event.id) }}"
+          action="{{ path_for(request, 'event_delete', event_id=event.id) }}"
           class="event-sidebar-form"
           onsubmit="return confirm('Удалить событие «{{ event.title }}» и все материалы?');"
         >
@@ -73,7 +73,7 @@
         {% endif %}
 
         {% if is_creator %}
-          <form method="post" action="{{ request.url_for('event_add_participant', event_id=event.id) }}" class="event-sidebar-form events-add-participant-form">
+          <form method="post" action="{{ path_for(request, 'event_add_participant', event_id=event.id) }}" class="event-sidebar-form events-add-participant-form">
             {% if addable_friends %}
               <label class="events-add-label" for="id_friend_id">Из друзей</label>
               <select id="id_friend_id" name="friend_id" class="form-input">
@@ -106,7 +106,7 @@
     {% if attachable_files %}
       <div class="event-sidebar-block">
         <div class="event-sidebar-label">Из моих файлов</div>
-        <form method="post" action="{{ request.url_for('event_attach_existing', event_id=event.id) }}" class="event-sidebar-form">
+        <form method="post" action="{{ path_for(request, 'event_attach_existing', event_id=event.id) }}" class="event-sidebar-form">
           <select name="file_id" class="form-input">
             {% for f in attachable_files %}
               <option value="{{ f.id }}">{{ f.file_name }}</option>
@@ -150,7 +150,7 @@
     <form
       id="eventUploadForm"
       method="post"
-      action="{{ request.url_for('event_upload', event_id=event.id) }}"
+      action="{{ path_for(request, 'event_upload', event_id=event.id) }}"
       enctype="multipart/form-data"
       class="explorer-upload-form"
     >
@@ -187,7 +187,7 @@
                       <form
                         class="explorer-rename-form"
                         method="post"
-                        action="{{ request.url_for('event_file_rename', event_id=event.id, file_id=item.id) }}"
+                        action="{{ path_for(request, 'event_file_rename', event_id=event.id, file_id=item.id) }}"
                         hidden
                       >
                         <input type="text" name="file_name" class="explorer-rename-input" value="{{ item.file_name }}" maxlength="255" required>
@@ -217,7 +217,7 @@
                     {% endif %}
                     {% if item.storage_name %}
                       <a
-                        href="{{ request.url_for('cloud_file_download', file_id=item.id) }}"
+                        href="{{ path_for(request, 'cloud_file_download', file_id=item.id) }}"
                         class="explorer-action-btn"
                         title="Скачать"
                         download
@@ -234,7 +234,7 @@
                     {% if can_manage_file %}
                       <form
                         method="post"
-                        action="{{ request.url_for('event_file_delete', event_id=event.id, file_id=item.id) }}"
+                        action="{{ path_for(request, 'event_file_delete', event_id=event.id, file_id=item.id) }}"
                         class="explorer-delete-form"
                         onsubmit="return confirm('Удалить «{{ item.file_name }}» из события?');"
                       >

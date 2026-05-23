@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 {% from "core/macros/file_preview.html" import preview_cell, preview_open_action, file_preview_modal, file_preview_script %}
 
 {% block title %}Мои файлы — FBE cloud{% endblock %}
@@ -27,7 +27,7 @@
   <form
     id="filesUploadForm"
     method="post"
-    action="{{ request.url_for('files_upload') }}"
+    action="{{ path_for(request, 'files_upload') }}"
     enctype="multipart/form-data"
     class="explorer-upload-form"
   >
@@ -51,7 +51,7 @@
         </thead>
         <tbody>
           {% for item in items %}
-            <tr class="explorer-row" data-rename-url="{{ request.url_for('files_rename', file_id=item.id) }}">
+            <tr class="explorer-row" data-rename-url="{{ path_for(request, 'files_rename', file_id=item.id) }}">
               {{ preview_cell(item, request) }}
               <td class="col-name">
                 <div class="explorer-name-wrap">
@@ -59,7 +59,7 @@
                     {% if item.mime_type and item.mime_type.startswith('image/') %}🖼{% elif item.mime_type and 'pdf' in item.mime_type %}📕{% elif item.mime_type and ('zip' in item.mime_type or 'archive' in item.mime_type) %}📦{% elif item.mime_type and item.mime_type.startswith('video/') %}🎬{% elif item.mime_type and item.mime_type.startswith('audio/') %}🎵{% else %}📄{% endif %}
                   </span>
                   <span class="explorer-file-name">{{ item.file_name }}</span>
-                  <form class="explorer-rename-form" method="post" action="{{ request.url_for('files_rename', file_id=item.id) }}" hidden>
+                  <form class="explorer-rename-form" method="post" action="{{ path_for(request, 'files_rename', file_id=item.id) }}" hidden>
                     <input type="text" name="file_name" class="explorer-rename-input" value="{{ item.file_name }}" maxlength="255" required>
                     <button type="submit" class="explorer-action-btn" title="Сохранить">✓</button>
                     <button type="button" class="explorer-action-btn explorer-rename-cancel" title="Отмена">↩</button>
@@ -86,7 +86,7 @@
                   <button type="button" class="explorer-action-btn explorer-rename-open" title="Переименовать" aria-label="Переименовать">✎</button>
                   {% if item.storage_name %}
                     <a
-                      href="{{ request.url_for('cloud_file_download', file_id=item.id) }}"
+                      href="{{ path_for(request, 'cloud_file_download', file_id=item.id) }}"
                       class="explorer-action-btn"
                       title="Скачать"
                       download
@@ -102,7 +102,7 @@
                   {% endif %}
                   <form
                     method="post"
-                    action="{{ request.url_for('files_delete', file_id=item.id) }}"
+                    action="{{ path_for(request, 'files_delete', file_id=item.id) }}"
                     class="explorer-delete-form"
                     onsubmit="return confirm('Удалить «{{ item.file_name }}»?');"
                   >
