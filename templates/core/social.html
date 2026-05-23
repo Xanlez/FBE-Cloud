@@ -40,7 +40,14 @@
                 {% elif row.status == "sent" %}
                   отправлено
                 {% elif row.status == "incoming" %}
-                  заявка
+                  <span class="messenger-incoming-actions">
+                    <form method="post" action="{{ path_for(request, 'social_accept_friend', request_id=row.request_id) }}">
+                      <button type="submit" class="messenger-inline-btn messenger-inline-btn-primary" title="Принять">✓</button>
+                    </form>
+                    <form method="post" action="{{ path_for(request, 'social_reject_friend', request_id=row.request_id) }}">
+                      <button type="submit" class="messenger-inline-btn messenger-inline-btn-danger" title="Отклонить">✕</button>
+                    </form>
+                  </span>
                 {% else %}
                   <form method="post" action="{{ path_for(request, 'social_request_friend', target_user_id=row.user.id) }}">
                     <button type="submit" class="messenger-inline-btn">+</button>
@@ -62,9 +69,14 @@
             <li class="messenger-friend-item messenger-friend-item-static">
               <span class="messenger-friend-avatar">{{ (sender.username[0] if sender else '?')|upper }}</span>
               <span class="messenger-friend-name">{{ sender.username if sender else ('User #' ~ req.from_user_id) }}</span>
-              <form method="post" action="{{ path_for(request, 'social_accept_friend', request_id=req.id) }}">
-                <button type="submit" class="messenger-inline-btn messenger-inline-btn-primary" title="Принять">✓</button>
-              </form>
+              <span class="messenger-incoming-actions">
+                <form method="post" action="{{ path_for(request, 'social_accept_friend', request_id=req.id) }}">
+                  <button type="submit" class="messenger-inline-btn messenger-inline-btn-primary" title="Принять">✓</button>
+                </form>
+                <form method="post" action="{{ path_for(request, 'social_reject_friend', request_id=req.id) }}">
+                  <button type="submit" class="messenger-inline-btn messenger-inline-btn-danger" title="Отклонить">✕</button>
+                </form>
+              </span>
             </li>
           {% endfor %}
         </ul>

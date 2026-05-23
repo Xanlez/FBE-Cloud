@@ -54,16 +54,21 @@ def _social_context(
         )
         outgoing_set = {r.to_user_id for r in outgoing_rows}
         incoming_set = {r.from_user_id for r in incoming}
+        incoming_request_ids = {r.from_user_id: r.id for r in incoming}
         friend_set = set(friend_ids)
         for candidate in candidates:
             status_label = "none"
+            request_id = None
             if candidate.id in friend_set:
                 status_label = "friend"
             elif candidate.id in outgoing_set:
                 status_label = "sent"
             elif candidate.id in incoming_set:
                 status_label = "incoming"
-            search_results.append({"user": candidate, "status": status_label})
+                request_id = incoming_request_ids.get(candidate.id)
+            search_results.append(
+                {"user": candidate, "status": status_label, "request_id": request_id}
+            )
 
     active_friend = None
     messages = []
@@ -203,6 +208,30 @@ def social_accept_friend(request: Request, request_id: int):
     if not are_friends(db, req.to_user_id, req.from_user_id):
         db.add(Friendship(user_id=req.to_user_id, friend_id=req.from_user_id, created_at=utc_now().isoformat()))
     db.commit()
+    db.close()
+    return RedirectResponse(url="/social/", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.post("/social/friends/reject/{request_id}", name="social_reject_friend")
+def social_reject_friend(request: Request, request_id: int):
+    db = SessionLocal()
+    user = get_current_user(request, db)
+    if not user:
+        db.close()
+        return RedirectResponse(url="/accounts/login/", status_code=status.HTTP_303_SEE_OTHER)
+
+    req = (
+        db.query(FriendRequest)
+        .filter(
+            FriendRequest.id == request_id,
+            FriendRequest.to_user_id == user.id,
+            FriendRequest.status == "pending",
+        )
+        .first()
+    )
+    if req:
+        db.delete(req)
+        db.commit()
     db.close()
     return RedirectResponse(url="/social/", status_code=status.HTTP_303_SEE_OTHER)
 

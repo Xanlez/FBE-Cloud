@@ -441,6 +441,20 @@ main.main-full .demo-push-wrap {
   margin-bottom: 0;
 }
 
+.form-help-link {
+  margin: 0.45rem 0 0;
+  text-align: right;
+  font-size: 0.85rem;
+}
+
+.form-help-link a {
+  color: var(--muted);
+}
+
+.form-help-link a:hover {
+  color: var(--accent-hover);
+}
+
 .form-card {
   max-width: 400px;
   margin: 2rem auto 0;
@@ -1370,6 +1384,26 @@ main.main-messenger .messenger {
   background: var(--accent);
   border-color: transparent;
   color: #fff;
+}
+
+.messenger-inline-btn-danger {
+  color: var(--danger);
+  border-color: rgba(224, 122, 122, 0.45);
+}
+
+.messenger-inline-btn-danger:hover {
+  background: rgba(224, 122, 122, 0.18);
+}
+
+.messenger-incoming-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-shrink: 0;
+}
+
+.messenger-incoming-actions form {
+  margin: 0;
 }
 
 .messenger-sidebar-empty {

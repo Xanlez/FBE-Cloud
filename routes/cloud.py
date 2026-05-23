@@ -1002,12 +1002,13 @@ def event_add_participant(
             created_at=utc_now().isoformat(),
         )
     )
+    added_username = target.username
     db.commit()
     db.close()
     return _event_detail_response(
         request,
         event_id,
-        success=f"«{target.username}» добавлен в участники.",
+        success=f"«{added_username}» добавлен в участники.",
     )
 
 

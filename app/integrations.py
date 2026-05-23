@@ -59,6 +59,39 @@ def send_verification_email(email_to: str, code: str) -> bool:
     return True
 
 
+def send_password_reset_email(email_to: str, code: str) -> bool:
+    if not SMTP_HOST or not SMTP_USER or not SMTP_PASSWORD:
+        logger.warning(
+            "SMTP не настроен (SMTP_HOST/SMTP_USER/SMTP_PASSWORD в .env). "
+            "Код сброса пароля для %s: %s",
+            email_to,
+            code,
+        )
+        return False
+
+    msg = EmailMessage()
+    msg["Subject"] = "Сброс пароля FBE cloud"
+    msg["From"] = SMTP_FROM
+    msg["To"] = email_to
+    msg.set_content(
+        f"Код для сброса пароля: {code}\n\n"
+        f"Код действует 10 минут.\n"
+        f"Если вы не запрашивали сброс, просто проигнорируйте письмо."
+    )
+
+    try:
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=20) as smtp:
+            smtp.starttls()
+            smtp.login(SMTP_USER, SMTP_PASSWORD)
+            smtp.send_message(msg)
+    except Exception:
+        logger.exception("Не удалось отправить письмо сброса пароля на %s", email_to)
+        return False
+
+    logger.info("Код сброса пароля отправлен на %s", email_to)
+    return True
+
+
 def get_drive_service():
     if not GOOGLE_SERVICE_ACCOUNT_JSON:
         return None, "Не настроен GOOGLE_SERVICE_ACCOUNT_JSON в .env."
