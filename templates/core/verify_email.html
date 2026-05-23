@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %}Подтверждение почты — FBE cloud{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Подтверждение почты</h1>
+<div class="card form-card">
+  <p style="margin-top:0; color: var(--muted);">
+    Введите 6-значный код из письма.
+    {% if email_hint %}<br>Почта: <strong>{{ email_hint }}</strong>{% endif %}
+  </p>
+
+  {% if error %}
+    <ul class="messages"><li class="error">{{ error }}</li></ul>
+  {% endif %}
+
+  <form method="post" action="{{ request.url_for('verify_email_post') }}">
+    <div class="form-group">
+      <label for="id_code">Код подтверждения</label>
+      <input id="id_code" name="code" class="form-input" maxlength="6" minlength="6" required>
+    </div>
+    <button type="submit" class="btn btn-primary" style="width:100%; margin-top:0.5rem;">Подтвердить</button>
+  </form>
+
+  <form method="post" action="{{ request.url_for('verify_email_resend') }}" style="margin-top:0.75rem;">
+    <button type="submit" class="btn btn-ghost" style="width:100%;">Отправить код заново</button>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,9 @@
+{% macro demo_push_notice() %}
+<div class="demo-push" role="alert">
+  <span class="demo-push-icon" aria-hidden="true">!</span>
+  <div class="demo-push-body">
+    <div class="demo-push-title">Демонстрационная версия</div>
+    <p class="demo-push-text">{{ upload_limit_hint() }}. Сервис предназначен для показа возможностей.</p>
+  </div>
+</div>
+{% endmacro %}

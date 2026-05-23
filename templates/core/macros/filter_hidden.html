@@ -1,0 +1,7 @@
+{% macro filter_hidden(filters) %}
+<input type="hidden" name="q" value="{{ filters.q }}">
+<input type="hidden" name="author" value="{{ filters.author }}">
+<input type="hidden" name="date" value="{{ filters.date }}">
+<input type="hidden" name="ext" value="{{ filters.ext }}">
+<input type="hidden" name="sort" value="{{ filters.sort }}">
+{% endmacro %}

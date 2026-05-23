@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+
+{% block title %}Админка — FBE cloud{% endblock %}
+{% block main_class %}main-full{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Админка</h1>
+<p class="admin-lead">Обзор системы: пользователи, файлы, события и активность.</p>
+
+<section class="admin-stats">
+  <div class="admin-stat-card">
+    <div class="admin-stat-value">{{ stats.users_count }}</div>
+    <div class="admin-stat-label">Пользователей</div>
+  </div>
+  <div class="admin-stat-card">
+    <div class="admin-stat-value">{{ stats.users_verified }}</div>
+    <div class="admin-stat-label">Email подтверждён</div>
+  </div>
+  <div class="admin-stat-card">
+    <div class="admin-stat-value">{{ stats.files_count }}</div>
+    <div class="admin-stat-label">Записей файлов</div>
+  </div>
+  <div class="admin-stat-card">
+    <div class="admin-stat-value">{{ stats.files_total_bytes|bytes_hr }}</div>
+    <div class="admin-stat-label">Суммарный размер в БД</div>
+  </div>
+  <div class="admin-stat-card">
+    <div class="admin-stat-value">{{ stats.files_disk_bytes|bytes_hr }}</div>
+    <div class="admin-stat-label">На диске (data/)</div>
+  </div>
+  <div class="admin-stat-card">
+    <div class="admin-stat-value">{{ stats.events_count }}</div>
+    <div class="admin-stat-label">Событий</div>
+  </div>
+  <div class="admin-stat-card">
+    <div class="admin-stat-value">{{ stats.messages_count }}</div>
+    <div class="admin-stat-label">Сообщений в чате</div>
+  </div>
+  <div class="admin-stat-card">
+    <div class="admin-stat-value">{{ stats.friendships_count }}</div>
+    <div class="admin-stat-label">Связей дружбы</div>
+  </div>
+  <div class="admin-stat-card">
+    <div class="admin-stat-value">{{ stats.friend_requests_pending }}</div>
+    <div class="admin-stat-label">Заявок в друзья (ожид.)</div>
+  </div>
+  <div class="admin-stat-card">
+    <div class="admin-stat-value">{{ stats.event_participants_count }}</div>
+    <div class="admin-stat-label">Участников событий</div>
+  </div>
+</section>
+
+{% if stats.files_by_visibility %}
+<div class="card admin-section">
+  <h2>Файлы по разделам</h2>
+  <ul class="admin-vis-list">
+    {% for label, count in stats.files_by_visibility.items() %}
+      <li><span>{{ label }}</span><strong>{{ count }}</strong></li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+<div class="card admin-section" id="admin-users">
+  <h2>Пользователи ({{ users|length }})</h2>
+  <div class="admin-table-wrap">
+    <table class="explorer-table admin-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Логин</th>
+          <th>Email</th>
+          <th>Подтверждён</th>
+          <th>Персонал</th>
+          <th>Staff</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+          <tr>
+            <td>{{ u.id }}</td>
+            <td><strong>{{ u.username }}</strong></td>
+            <td>{{ u.email }}</td>
+            <td>{% if u.is_email_verified %}✓{% else %}—{% endif %}</td>
+            <td>{% if u.is_personnel %}✓{% else %}—{% endif %}</td>
+            <td>{% if u.is_staff %}✓{% else %}—{% endif %}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="6">Нет пользователей</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card admin-section" id="admin-files">
+  <h2>Файлы ({{ files|length }})</h2>
+  <div class="admin-table-wrap">
+    <table class="explorer-table admin-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Имя</th>
+          <th>Владелец</th>
+          <th>Раздел</th>
+          <th>Событие</th>
+          <th>Размер</th>
+          <th>Дата</th>
+          <th>Хранение</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for f in files %}
+          <tr>
+            <td>{{ f.id }}</td>
+            <td class="admin-cell-name" title="{{ f.file_name }}">{{ f.file_name }}</td>
+            <td>{{ f.owner_username }}</td>
+            <td>{{ f.visibility_label }}</td>
+            <td>{{ f.event_title }}</td>
+            <td>{{ f.size_bytes|bytes_hr }}</td>
+            <td>{{ f.created_at[:16].replace('T', ' ') }}</td>
+            <td>{% if f.storage_name %}локально{% elif f.web_view_link %}ссылка{% else %}—{% endif %}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="8">Нет файлов</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card admin-section" id="admin-events">
+  <h2>События ({{ events|length }})</h2>
+  <div class="admin-table-wrap">
+    <table class="explorer-table admin-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Название</th>
+          <th>Создатель</th>
+          <th>Дата</th>
+          <th>Доступ</th>
+          <th>Создано</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in events %}
+          <tr>
+            <td>{{ e.id }}</td>
+            <td>
+              <a href="{{ request.url_for('event_detail', event_id=e.id) }}">{{ e.title }}</a>
+            </td>
+            <td>{{ e.creator_username }}</td>
+            <td>{{ e.event_date|event_date_ru }}</td>
+            <td>{% if e.is_private %}🔒 Закрытое{% else %}🌐 Открытое{% endif %}</td>
+            <td>{{ e.created_at[:16].replace('T', ' ') }}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="6">Нет событий</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if pending_requests %}
+<div class="card admin-section" id="admin-requests">
+  <h2>Заявки в друзья (ожидают)</h2>
+  <div class="admin-table-wrap">
+    <table class="explorer-table admin-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>От</th>
+          <th>Кому</th>
+          <th>Дата</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in pending_requests %}
+          <tr>
+            <td>{{ r.id }}</td>
+            <td>{{ r.from_username }}</td>
+            <td>{{ r.to_username }}</td>
+            <td>{{ r.created_at[:16].replace('T', ' ') }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

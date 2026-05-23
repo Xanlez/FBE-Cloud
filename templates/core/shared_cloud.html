@@ -1,0 +1,287 @@
+{% extends "base.html" %}
+{% from "core/macros/filter_hidden.html" import filter_hidden %}
+{% from "core/macros/file_preview.html" import preview_cell, preview_open_action, file_preview_modal, file_preview_script %}
+
+{% block title %}Общее облако — FBE cloud{% endblock %}
+{% block main_class %}main-full{% endblock %}
+
+{% block content %}
+{% set shared_return_url = request.url_for('shared_cloud') %}
+{% if filters.query_string() %}{% set shared_return_url = shared_return_url ~ '?' ~ filters.query_string() %}{% endif %}
+<section class="explorer" id="sharedExplorer">
+  <div class="explorer-toolbar">
+    <div class="explorer-toolbar-left">
+      <h1 class="explorer-title">Общее облако</h1>
+      <span class="explorer-count">
+        {% if filters.active() %}
+          {{ items|length }} из {{ total_count }}
+        {% else %}
+          {{ items|length }} элементов
+        {% endif %}
+      </span>
+      <span class="explorer-limit-hint" title="{{ upload_limit_hint }}">Осталось {{ files_remaining }}</span>
+    </div>
+    <button type="button" class="explorer-add-btn" id="addFileBtn" title="Загрузить файлы" aria-label="Загрузить файлы">
+      <span class="explorer-add-icon">+</span>
+    </button>
+  </div>
+
+  <form method="get" action="{{ request.url_for('shared_cloud') }}" class="explorer-filters">
+    <div class="explorer-filters-row">
+      <input
+        type="search"
+        name="q"
+        class="explorer-filter-input"
+        placeholder="Поиск по имени…"
+        value="{{ filters.q }}"
+      >
+      <input
+        type="search"
+        name="author"
+        class="explorer-filter-input"
+        placeholder="Автор…"
+        value="{{ filters.author }}"
+        list="sharedAuthorsList"
+      >
+      <datalist id="sharedAuthorsList">
+        {% for name in authors %}
+          <option value="{{ name }}"></option>
+        {% endfor %}
+      </datalist>
+      <input
+        type="date"
+        name="date"
+        class="explorer-filter-input explorer-filter-date"
+        value="{{ filters.date }}"
+        title="Дата публикации"
+        aria-label="Дата публикации"
+      >
+      <select name="ext" class="explorer-filter-input" title="Тип файла">
+        <option value="">Все типы</option>
+        <option value="docx" {% if filters.ext == 'docx' %}selected{% endif %}>Word (.docx)</option>
+        <option value="xlsx" {% if filters.ext == 'xlsx' %}selected{% endif %}>Excel (.xlsx)</option>
+        <option value="pptx" {% if filters.ext == 'pptx' %}selected{% endif %}>PowerPoint (.pptx)</option>
+        <option value="pdf" {% if filters.ext == 'pdf' %}selected{% endif %}>PDF</option>
+        <option value="png" {% if filters.ext == 'png' %}selected{% endif %}>PNG</option>
+        <option value="jpg" {% if filters.ext == 'jpg' %}selected{% endif %}>JPEG</option>
+        <option value="zip" {% if filters.ext == 'zip' %}selected{% endif %}>ZIP</option>
+        <option value="mp4" {% if filters.ext == 'mp4' %}selected{% endif %}>MP4</option>
+        <option value="txt" {% if filters.ext == 'txt' %}selected{% endif %}>Текст</option>
+      </select>
+      <select name="sort" class="explorer-filter-input" title="Сортировка">
+        {% for key, label in sort_options.items() %}
+          <option value="{{ key }}" {% if filters.sort == key %}selected{% endif %}>{{ label[0] }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="btn btn-primary explorer-filter-submit">Найти</button>
+      <a href="{{ request.url_for('shared_cloud') }}" class="btn btn-ghost explorer-filter-reset">Сбросить</a>
+    </div>
+  </form>
+
+  {% if error %}
+    <ul class="messages explorer-messages"><li class="error">{{ error }}</li></ul>
+  {% endif %}
+  {% if success %}
+    <ul class="messages explorer-messages"><li>{{ success }}</li></ul>
+  {% endif %}
+
+  <form
+    id="sharedUploadForm"
+    method="post"
+    action="{{ request.url_for('shared_cloud_upload') }}"
+    enctype="multipart/form-data"
+    class="explorer-upload-form"
+  >
+    {{ filter_hidden(filters) }}
+    <input type="file" name="files" id="sharedFilesPicker" multiple hidden>
+  </form>
+
+  <div class="explorer-panel" id="explorerPanel">
+    <div class="explorer-drop-hint" id="explorerDropHint">Отпустите файлы для загрузки</div>
+    <div class="explorer-table-wrap">
+      <table class="explorer-table">
+        <thead>
+          <tr>
+            <th class="col-preview">Обложка</th>
+            <th class="col-name">Имя</th>
+            <th class="col-author">Автор</th>
+            <th class="col-date">Дата изменения</th>
+            <th class="col-type">Тип</th>
+            <th class="col-size">Размер</th>
+            <th class="col-actions"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in items %}
+            <tr class="explorer-row">
+              {{ preview_cell(item, request) }}
+              <td class="col-name">
+                <div class="explorer-name-wrap">
+                  <span class="explorer-file-icon" aria-hidden="true">
+                    {% if item.mime_type and item.mime_type.startswith('image/') %}🖼{% elif item.mime_type and 'pdf' in item.mime_type %}📕{% elif item.mime_type and ('zip' in item.mime_type or 'archive' in item.mime_type) %}📦{% elif item.mime_type and item.mime_type.startswith('video/') %}🎬{% elif item.mime_type and item.mime_type.startswith('audio/') %}🎵{% else %}📄{% endif %}
+                  </span>
+                  <span class="explorer-file-name">{{ item.file_name }}</span>
+                  {% if item.owner_user_id == user.id %}
+                    <form class="explorer-rename-form" method="post" action="{{ request.url_for('shared_cloud_rename', file_id=item.id) }}" hidden>
+                      {{ filter_hidden(filters) }}
+                      <input type="text" name="file_name" class="explorer-rename-input" value="{{ item.file_name }}" maxlength="255" required>
+                      <button type="submit" class="explorer-action-btn" title="Сохранить">✓</button>
+                      <button type="button" class="explorer-action-btn explorer-rename-cancel" title="Отмена">↩</button>
+                    </form>
+                  {% endif %}
+                </div>
+              </td>
+              <td class="col-author">
+                <span class="explorer-author">{{ item.author_username }}</span>
+              </td>
+              <td class="col-date">{{ item.created_at[:16].replace('T', ' ') }}</td>
+              <td class="col-type"><span class="explorer-ext">{{ item.file_name|file_type(item.mime_type) }}</span></td>
+              <td class="col-size">
+                {% if item.size_bytes >= 1048576 %}
+                  {{ (item.size_bytes / 1048576)|round(1) }} МБ
+                {% elif item.size_bytes >= 1024 %}
+                  {{ (item.size_bytes / 1024)|round(1) }} КБ
+                {% else %}
+                  {{ item.size_bytes }} Б
+                {% endif %}
+              </td>
+              <td class="col-actions">
+                <div class="explorer-actions">
+                  {{ preview_open_action(item, request) }}
+                  {% if item.owner_user_id == user.id %}
+                    <button type="button" class="explorer-action-btn explorer-rename-open" title="Переименовать" aria-label="Переименовать">✎</button>
+                  {% endif %}
+                  {% if item.storage_name %}
+                    <a
+                      href="{{ request.url_for('cloud_file_download', file_id=item.id) }}"
+                      class="explorer-action-btn"
+                      title="Скачать"
+                      download
+                    >↓</a>
+                  {% elif item.web_view_link %}
+                    <a
+                      href="{{ item.web_view_link }}"
+                      class="explorer-action-btn"
+                      title="Скачать"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >↓</a>
+                  {% endif %}
+                  {% if item.owner_user_id == user.id %}
+                    <form
+                      method="post"
+                      action="{{ request.url_for('shared_cloud_delete', file_id=item.id) }}"
+                      class="explorer-delete-form"
+                      onsubmit="return confirm('Удалить «{{ item.file_name }}»?');"
+                    >
+                      {{ filter_hidden(filters) }}
+                      <button type="submit" class="explorer-action-btn explorer-action-btn-danger" title="Удалить" aria-label="Удалить">×</button>
+                    </form>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+          {% else %}
+            <tr class="explorer-empty-row">
+              <td colspan="7">
+                <div class="explorer-empty">
+                  {% if filters.active() %}
+                    <p>Ничего не найдено</p>
+                    <p class="explorer-empty-hint">Измените фильтры или <a href="{{ request.url_for('shared_cloud') }}">сбросьте поиск</a></p>
+                  {% else %}
+                    <p>Облако пусто</p>
+                    <p class="explorer-empty-hint">Нажмите <strong>+</strong> или перетащите файлы сюда</p>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{{ file_preview_modal() }}
+
+<script>
+  (() => {
+    const panel = document.getElementById("explorerPanel");
+    const picker = document.getElementById("sharedFilesPicker");
+    const form = document.getElementById("sharedUploadForm");
+    const addBtn = document.getElementById("addFileBtn");
+    let dragDepth = 0;
+
+    const submitFiles = (fileList) => {
+      if (!fileList || !fileList.length) return;
+      const dt = new DataTransfer();
+      for (const file of fileList) dt.items.add(file);
+      picker.files = dt.files;
+      form.submit();
+    };
+
+    addBtn?.addEventListener("click", () => picker.click());
+    picker?.addEventListener("change", () => {
+      if (picker.files.length) submitFiles(picker.files);
+    });
+
+    panel?.addEventListener("dragenter", (e) => {
+      e.preventDefault();
+      dragDepth += 1;
+      panel.classList.add("drag-over");
+    });
+    panel?.addEventListener("dragover", (e) => e.preventDefault());
+    panel?.addEventListener("dragleave", (e) => {
+      e.preventDefault();
+      dragDepth -= 1;
+      if (dragDepth <= 0) {
+        dragDepth = 0;
+        panel.classList.remove("drag-over");
+      }
+    });
+    panel?.addEventListener("drop", (e) => {
+      e.preventDefault();
+      dragDepth = 0;
+      panel.classList.remove("drag-over");
+      if (e.dataTransfer?.files?.length) submitFiles(e.dataTransfer.files);
+    });
+
+    const openRename = (row) => {
+      const nameEl = row.querySelector(".explorer-file-name");
+      const renameForm = row.querySelector(".explorer-rename-form");
+      const input = row.querySelector(".explorer-rename-input");
+      if (!nameEl || !renameForm || !input) return;
+      input.value = nameEl.textContent.trim();
+      nameEl.hidden = true;
+      renameForm.hidden = false;
+      input.focus();
+      input.select();
+    };
+
+    const closeRename = (row, restore) => {
+      const nameEl = row.querySelector(".explorer-file-name");
+      const renameForm = row.querySelector(".explorer-rename-form");
+      const input = row.querySelector(".explorer-rename-input");
+      if (!nameEl || !renameForm || !input) return;
+      if (restore) input.value = nameEl.textContent.trim();
+      renameForm.hidden = true;
+      nameEl.hidden = false;
+    };
+
+    document.querySelectorAll(".explorer-rename-open").forEach((btn) => {
+      btn.addEventListener("click", () => openRename(btn.closest(".explorer-row")));
+    });
+    document.querySelectorAll(".explorer-rename-cancel").forEach((btn) => {
+      btn.addEventListener("click", () => closeRename(btn.closest(".explorer-row"), true));
+    });
+    document.querySelectorAll(".explorer-rename-input").forEach((input) => {
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+          e.preventDefault();
+          closeRename(input.closest(".explorer-row"), true);
+        }
+      });
+    });
+  })();
+</script>
+{{ file_preview_script() }}
+{% endblock %}

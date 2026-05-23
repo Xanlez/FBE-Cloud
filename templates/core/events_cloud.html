@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block title %}События — FBE cloud{% endblock %}
+{% block main_class %}main-full main-messenger{% endblock %}
+
+{% block content %}
+<section class="event-explorer events-hub">
+  <aside class="event-sidebar" id="eventsCreateSidebar">
+    <h2 class="events-sidebar-heading">Новое событие</h2>
+    <p class="event-sidebar-hint">Экзамены, зачёты и другие мероприятия</p>
+
+    {% if error %}
+      <ul class="messages explorer-messages"><li class="error">{{ error }}</li></ul>
+    {% endif %}
+    {% if success %}
+      <ul class="messages explorer-messages"><li>{{ success }}</li></ul>
+    {% endif %}
+
+    <form method="post" action="{{ request.url_for('events_cloud_create') }}" class="event-sidebar-form events-create-form">
+      <div class="form-group">
+        <label for="id_title">Название</label>
+        <input id="id_title" name="title" class="form-input" placeholder="Экзамен по матану" required>
+      </div>
+      <div class="form-group">
+        <label for="id_event_date">Дата</label>
+        <input id="id_event_date" name="event_date" type="date" class="form-input form-input-date" required>
+      </div>
+      <div class="form-group">
+        <label for="id_description">Описание</label>
+        <input id="id_description" name="description" class="form-input" placeholder="Преподаватель, группа">
+      </div>
+      <div class="form-group events-checkbox-row">
+        <label class="events-checkbox-label">
+          <input type="checkbox" name="is_private" value="1">
+          <span>Закрытое (только участники)</span>
+        </label>
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%;">Создать</button>
+    </form>
+  </aside>
+
+  <div class="event-explorer-main explorer" id="eventsListExplorer">
+    <div class="explorer-toolbar">
+      <div class="explorer-toolbar-left">
+        <h1 class="explorer-title">События</h1>
+        <span class="explorer-count">{{ events|length }} в списке</span>
+      </div>
+      <button type="button" class="explorer-add-btn" id="eventsAddBtn" title="Создать событие" aria-label="Создать событие">
+        <span class="explorer-add-icon">+</span>
+      </button>
+    </div>
+
+    <div class="explorer-panel">
+      <div class="explorer-table-wrap">
+        <table class="explorer-table events-table">
+          <thead>
+            <tr>
+              <th class="col-name">Название</th>
+              <th class="col-date">Дата</th>
+              <th class="col-desc">Описание</th>
+              <th class="col-author">Создатель</th>
+              <th class="col-access">Доступ</th>
+              <th class="col-actions"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for event in events %}
+              <tr class="explorer-row events-row">
+                <td class="col-name">
+                  <a href="{{ request.url_for('event_detail', event_id=event.id) }}" class="events-row-link">
+                    <span class="explorer-file-icon" aria-hidden="true">📅</span>
+                    <span class="explorer-file-name">{{ event.title }}</span>
+                  </a>
+                </td>
+                <td class="col-date">
+                  <span class="events-date-cell">{{ event.event_date|event_date_ru }}</span>
+                </td>
+                <td class="col-desc">
+                  <span class="events-desc-cell" title="{{ event.description or '' }}">
+                    {{ event.description or "—" }}
+                  </span>
+                </td>
+                <td class="col-author">
+                  <span class="explorer-author">
+                    {{ event.creator_username }}
+                    {% if event.creator_user_id == user.id %}<span class="events-you-badge">вы</span>{% endif %}
+                  </span>
+                </td>
+                <td class="col-access">
+                  {% if event.is_private %}
+                    <span class="events-badge events-badge-private">🔒 Закрытое</span>
+                  {% else %}
+                    <span class="events-badge events-badge-open">🌐 Открытое</span>
+                  {% endif %}
+                </td>
+                <td class="col-actions">
+                  <div class="explorer-actions">
+                    <a
+                      href="{{ request.url_for('event_detail', event_id=event.id) }}"
+                      class="explorer-action-btn"
+                      title="Открыть"
+                      aria-label="Открыть"
+                    >→</a>
+                  </div>
+                </td>
+              </tr>
+            {% else %}
+              <tr class="explorer-empty-row">
+                <td colspan="6">
+                  <div class="explorer-empty">
+                    <p>Пока нет событий</p>
+                    <p class="explorer-empty-hint">Создайте первое в панели слева или нажмите «+»</p>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+  (function () {
+    const btn = document.getElementById("eventsAddBtn");
+    const sidebar = document.getElementById("eventsCreateSidebar");
+    const titleInput = document.getElementById("id_title");
+    btn?.addEventListener("click", () => {
+      sidebar?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      titleInput?.focus();
+      sidebar?.classList.add("events-sidebar-highlight");
+      window.setTimeout(() => sidebar?.classList.remove("events-sidebar-highlight"), 1200);
+    });
+  })();
+</script>
+{% endblock %}

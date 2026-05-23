@@ -1,0 +1,150 @@
+{% macro preview_cell(item, request) %}
+<td class="col-preview">
+  {% if item|can_preview_file %}
+    <button
+      type="button"
+      class="explorer-preview-open explorer-thumb-btn"
+      data-preview-id="{{ item.id }}"
+      data-preview-name="{{ item.file_name }}"
+      data-preview-mime="{{ item.mime_type or '' }}"
+      data-preview-url="{% if item.storage_name %}{{ request.url_for('cloud_file_preview', file_id=item.id) }}{% else %}{{ item.web_view_link }}{% endif %}"
+      data-preview-download="{% if item.storage_name %}{{ request.url_for('cloud_file_download', file_id=item.id) }}{% else %}{{ item.web_view_link }}{% endif %}"
+      title="Посмотреть «{{ item.file_name }}»"
+      aria-label="Посмотреть файл"
+    >
+      {% if item|is_image_file and item.storage_name %}
+        <img
+          src="{{ request.url_for('cloud_file_preview', file_id=item.id) }}"
+          alt=""
+          class="explorer-thumb"
+          loading="lazy"
+        >
+      {% else %}
+        <span class="explorer-thumb-fallback" aria-hidden="true">
+          {% if item.mime_type and 'pdf' in item.mime_type %}📕
+          {% elif item.mime_type and item.mime_type.startswith('video/') %}🎬
+          {% elif item.mime_type and item.mime_type.startswith('audio/') %}🎵
+          {% else %}👁{% endif %}
+        </span>
+      {% endif %}
+    </button>
+  {% else %}
+    <span class="explorer-thumb-empty" aria-hidden="true">—</span>
+  {% endif %}
+</td>
+{% endmacro %}
+
+{% macro preview_open_action(item, request) %}
+  {% if item|can_preview_file %}
+    <button
+      type="button"
+      class="explorer-action-btn explorer-preview-open"
+      data-preview-id="{{ item.id }}"
+      data-preview-name="{{ item.file_name }}"
+      data-preview-mime="{{ item.mime_type or '' }}"
+      data-preview-url="{% if item.storage_name %}{{ request.url_for('cloud_file_preview', file_id=item.id) }}{% else %}{{ item.web_view_link }}{% endif %}"
+      data-preview-download="{% if item.storage_name %}{{ request.url_for('cloud_file_download', file_id=item.id) }}{% else %}{{ item.web_view_link }}{% endif %}"
+      title="Посмотреть"
+      aria-label="Посмотреть файл"
+    >👁</button>
+  {% endif %}
+{% endmacro %}
+
+{% macro file_preview_modal() %}
+<div id="filePreviewModal" class="file-preview-modal" hidden>
+  <div class="file-preview-backdrop" data-preview-close></div>
+  <div class="file-preview-dialog" role="dialog" aria-modal="true" aria-labelledby="filePreviewTitle" aria-label="Просмотр файла">
+    <div class="file-preview-header">
+      <h3 id="filePreviewTitle" class="file-preview-title"></h3>
+      <button type="button" class="file-preview-close" data-preview-close aria-label="Закрыть">×</button>
+    </div>
+    <div id="filePreviewBody" class="file-preview-body"></div>
+    <div class="file-preview-footer">
+      <a id="filePreviewDownload" class="btn btn-primary" href="#" download>Скачать</a>
+    </div>
+  </div>
+</div>
+{% endmacro %}
+
+{% macro file_preview_script() %}
+<script>
+  (() => {
+    const modal = document.getElementById("filePreviewModal");
+    if (!modal) return;
+    const body = document.getElementById("filePreviewBody");
+    const title = document.getElementById("filePreviewTitle");
+    const download = document.getElementById("filePreviewDownload");
+
+    const closePreview = () => {
+      body.querySelectorAll("video, audio").forEach((m) => {
+        m.pause();
+        m.removeAttribute("src");
+      });
+      modal.setAttribute("hidden", "");
+      body.innerHTML = "";
+    };
+
+    const openPreview = (btn) => {
+      const url = btn.dataset.previewUrl;
+      const name = btn.dataset.previewName || "Файл";
+      const mime = (btn.dataset.previewMime || "").toLowerCase();
+      const dl = btn.dataset.previewDownload || url;
+      if (!url) return;
+
+      title.textContent = name;
+      download.href = dl;
+      body.innerHTML = "";
+
+      if (mime.startsWith("image/")) {
+        const img = document.createElement("img");
+        img.src = url;
+        img.alt = name;
+        img.className = "file-preview-image";
+        body.appendChild(img);
+      } else if (mime === "application/pdf" || name.toLowerCase().endsWith(".pdf")) {
+        const frame = document.createElement("iframe");
+        frame.src = url;
+        frame.className = "file-preview-frame";
+        frame.title = name;
+        body.appendChild(frame);
+      } else if (mime.startsWith("video/")) {
+        const video = document.createElement("video");
+        video.src = url;
+        video.controls = true;
+        video.className = "file-preview-video";
+        body.appendChild(video);
+      } else if (mime.startsWith("audio/")) {
+        const audio = document.createElement("audio");
+        audio.src = url;
+        audio.controls = true;
+        audio.className = "file-preview-audio";
+        body.appendChild(audio);
+      } else {
+        const frame = document.createElement("iframe");
+        frame.src = url;
+        frame.className = "file-preview-frame file-preview-frame-text";
+        frame.title = name;
+        body.appendChild(frame);
+      }
+
+      modal.removeAttribute("hidden");
+    };
+
+    document.querySelectorAll(".explorer-preview-open").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        openPreview(btn);
+      });
+    });
+
+    modal.querySelectorAll("[data-preview-close]").forEach((el) => {
+      el.addEventListener("click", closePreview);
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && !modal.hasAttribute("hidden")) closePreview();
+    });
+  })();
+</script>
+{% endmacro %}

@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block title %}Личный кабинет — FBE cloud{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Личный кабинет</h1>
+
+<div class="card">
+  <h2>Профиль</h2>
+  <div class="avatar-block">
+    {% set avatar = user|avatar_file %}
+    {% if avatar %}
+      <img src="{{ request.url_for('uploads', path=avatar) }}" alt="Аватар" class="avatar-image">
+    {% else %}
+      <div class="avatar-placeholder">{{ user.username[0]|upper }}</div>
+    {% endif %}
+  </div>
+  <p><strong>Ник:</strong> {{ user.username }}</p>
+  <p><strong>Почта:</strong> {{ user.email }}</p>
+
+  {% if error %}
+    <ul class="messages"><li class="error">{{ error }}</li></ul>
+  {% endif %}
+  {% if success %}
+    <ul class="messages"><li>{{ success }}</li></ul>
+  {% endif %}
+
+  <form method="post" action="{{ request.url_for('profile_upload_avatar') }}" enctype="multipart/form-data" style="margin-top:1rem;">
+    <div class="form-group">
+      <label for="id_avatar">Аватар (PNG, JPG, WEBP, GIF, до 2MB)</label>
+      <input id="id_avatar" name="avatar" type="file" class="form-input" accept=".png,.jpg,.jpeg,.webp,.gif" required>
+    </div>
+    <button type="submit" class="btn btn-ghost">Обновить аватар</button>
+  </form>
+
+  <a href="{{ request.url_for('profile_password') }}" class="btn btn-primary" style="margin-top:1rem;">Сменить пароль по коду</a>
+  <form method="post" action="{{ request.url_for('logout') }}" style="margin-top:0.75rem;">
+    <button type="submit" class="btn btn-ghost">Выйти</button>
+  </form>
+</div>
+{% endblock %}

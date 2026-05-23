@@ -1,0 +1,362 @@
+{% extends "base.html" %}
+{% from "core/macros/file_preview.html" import preview_cell, preview_open_action, file_preview_modal, file_preview_script %}
+
+{% block title %}{{ event.title }} — FBE cloud{% endblock %}
+{% block main_class %}main-full main-messenger{% endblock %}
+
+{% block content %}
+<section class="event-explorer">
+  <aside class="event-sidebar">
+    <a href="{{ request.url_for('events_cloud') }}" class="event-back-link">← Все события</a>
+
+    {% if is_creator %}
+      <div id="eventViewMode" class="event-view-panel"{% if show_edit %} hidden{% endif %}>
+        <h1 class="event-sidebar-title">{{ event.title }}</h1>
+        <p class="event-sidebar-date">📅 {{ event.event_date|event_date_ru }}</p>
+        <p class="event-sidebar-desc">{{ event.description or "Без описания" }}</p>
+        <button type="button" class="btn btn-primary event-edit-open-btn" style="width:100%; margin-top:0.5rem;">
+          Изменить событие
+        </button>
+      </div>
+
+      <div id="eventEditMode" class="event-edit-panel"{% if not show_edit %} hidden{% endif %}>
+        <div class="event-sidebar-label">Изменение события</div>
+        <form method="post" action="{{ request.url_for('event_rename', event_id=event.id) }}" class="event-sidebar-form event-manage-form">
+          <div class="form-group" style="margin-bottom:0.5rem;">
+            <label for="id_event_title">Название</label>
+            <input id="id_event_title" name="title" class="form-input" value="{{ event.title }}" maxlength="255" required>
+          </div>
+          <div class="form-group" style="margin-bottom:0.5rem;">
+            <label for="id_event_date">Дата</label>
+            <input id="id_event_date" name="event_date" type="date" class="form-input form-input-date" value="{{ event.event_date or '' }}" required>
+          </div>
+          <div class="form-group" style="margin-bottom:0.5rem;">
+            <label for="id_event_desc">Описание</label>
+            <input id="id_event_desc" name="description" class="form-input" value="{{ event.description or '' }}" maxlength="1000">
+          </div>
+          <button type="submit" class="btn btn-primary" style="width:100%;">Сохранить изменения</button>
+        </form>
+        <form
+          method="post"
+          action="{{ request.url_for('event_delete', event_id=event.id) }}"
+          class="event-sidebar-form"
+          onsubmit="return confirm('Удалить событие «{{ event.title }}» и все материалы?');"
+        >
+          <button type="submit" class="btn btn-ghost event-delete-btn" style="width:100%;">Удалить событие</button>
+        </form>
+        <button type="button" class="btn btn-ghost event-edit-cancel-btn" style="width:100%; margin-top:0.35rem;">Отмена</button>
+      </div>
+    {% else %}
+      <h1 class="event-sidebar-title">{{ event.title }}</h1>
+      <p class="event-sidebar-date">📅 {{ event.event_date|event_date_ru }}</p>
+      <p class="event-sidebar-desc">{{ event.description or "Без описания" }}</p>
+    {% endif %}
+
+    <p class="event-sidebar-meta">
+      {% if event.is_private %}🔒 Закрытое{% else %}🌐 Открытое{% endif %}
+    </p>
+
+    {% if event.is_private %}
+      <div class="event-sidebar-block">
+        <div class="event-sidebar-label">Участники · {{ participants|length }}</div>
+        {% if participants %}
+          <ul class="event-participant-list">
+            {% for p in participants %}
+              <li>
+                {{ p.username }}
+                {% if p.id == event.creator_user_id %}<span class="events-you-badge">создатель</span>{% endif %}
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="event-sidebar-hint">Пока никого</p>
+        {% endif %}
+
+        {% if is_creator %}
+          <form method="post" action="{{ request.url_for('event_add_participant', event_id=event.id) }}" class="event-sidebar-form events-add-participant-form">
+            {% if addable_friends %}
+              <label class="events-add-label" for="id_friend_id">Из друзей</label>
+              <select id="id_friend_id" name="friend_id" class="form-input">
+                <option value="">— не выбран —</option>
+                {% for f in addable_friends %}
+                  <option value="{{ f.id }}">{{ f.username }}</option>
+                {% endfor %}
+              </select>
+            {% endif %}
+            <label class="events-add-label" for="id_participant_username">Или логин на сайте</label>
+            <input
+              id="id_participant_username"
+              type="text"
+              name="username"
+              class="form-input"
+              placeholder="username"
+              autocomplete="off"
+            >
+            <button type="submit" class="btn btn-primary" style="width:100%; margin-top:0.5rem;">Добавить участника</button>
+          </form>
+          {% if not addable_friends and not friends %}
+            <p class="event-sidebar-hint">Нет друзей — добавьте по логину или сначала найдите человека в разделе «Друзья и чат».</p>
+          {% endif %}
+        {% elif not is_creator %}
+          <p class="event-sidebar-hint">Доступ только у участников и создателя.</p>
+        {% endif %}
+      </div>
+    {% endif %}
+
+    {% if attachable_files %}
+      <div class="event-sidebar-block">
+        <div class="event-sidebar-label">Из моих файлов</div>
+        <form method="post" action="{{ request.url_for('event_attach_existing', event_id=event.id) }}" class="event-sidebar-form">
+          <select name="file_id" class="form-input">
+            {% for f in attachable_files %}
+              <option value="{{ f.id }}">{{ f.file_name }}</option>
+            {% endfor %}
+          </select>
+          <button type="submit" class="btn btn-ghost" style="width:100%; margin-top:0.35rem;">Прикрепить</button>
+        </form>
+      </div>
+    {% endif %}
+  </aside>
+
+  <div class="event-explorer-main explorer" id="eventFilesExplorer">
+    <div class="explorer-toolbar">
+      <div class="explorer-toolbar-left">
+        <h2 class="explorer-title">Материалы</h2>
+        <span class="explorer-count">{{ items|length }} элементов</span>
+        <span class="explorer-limit-hint" title="{{ upload_limit_hint }}">Осталось {{ files_remaining }}</span>
+      </div>
+      <div class="explorer-toolbar-actions">
+        {% if is_creator %}
+          <button
+            type="button"
+            class="explorer-action-btn event-edit-open-btn"
+            title="Изменить событие"
+            aria-label="Изменить событие"
+          >✎</button>
+        {% endif %}
+        <button type="button" class="explorer-add-btn" id="eventAddFileBtn" title="Загрузить файлы" aria-label="Загрузить файлы">
+          <span class="explorer-add-icon">+</span>
+        </button>
+      </div>
+    </div>
+
+    {% if error %}
+      <ul class="messages explorer-messages"><li class="error">{{ error }}</li></ul>
+    {% endif %}
+    {% if success %}
+      <ul class="messages explorer-messages"><li>{{ success }}</li></ul>
+    {% endif %}
+
+    <form
+      id="eventUploadForm"
+      method="post"
+      action="{{ request.url_for('event_upload', event_id=event.id) }}"
+      enctype="multipart/form-data"
+      class="explorer-upload-form"
+    >
+      <input type="file" name="files" id="eventFilesPicker" multiple hidden>
+    </form>
+
+    <div class="explorer-panel" id="eventExplorerPanel">
+      <div class="explorer-drop-hint">Отпустите файлы для загрузки</div>
+      <div class="explorer-table-wrap">
+        <table class="explorer-table">
+          <thead>
+            <tr>
+              <th class="col-preview">Обложка</th>
+              <th class="col-name">Имя</th>
+              <th class="col-author">Автор</th>
+              <th class="col-date">Дата</th>
+              <th class="col-type">Тип</th>
+              <th class="col-size">Размер</th>
+              <th class="col-actions"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in items %}
+              {% set can_manage_file = is_creator or item.owner_user_id == user.id %}
+              <tr class="explorer-row">
+                {{ preview_cell(item, request) }}
+                <td class="col-name">
+                  <div class="explorer-name-wrap">
+                    <span class="explorer-file-icon" aria-hidden="true">
+                      {% if item.mime_type and item.mime_type.startswith('image/') %}🖼{% elif item.mime_type and 'pdf' in item.mime_type %}📕{% elif item.mime_type and ('zip' in item.mime_type or 'archive' in item.mime_type) %}📦{% elif item.mime_type and item.mime_type.startswith('video/') %}🎬{% elif item.mime_type and item.mime_type.startswith('audio/') %}🎵{% else %}📄{% endif %}
+                    </span>
+                    <span class="explorer-file-name">{{ item.file_name }}</span>
+                    {% if can_manage_file %}
+                      <form
+                        class="explorer-rename-form"
+                        method="post"
+                        action="{{ request.url_for('event_file_rename', event_id=event.id, file_id=item.id) }}"
+                        hidden
+                      >
+                        <input type="text" name="file_name" class="explorer-rename-input" value="{{ item.file_name }}" maxlength="255" required>
+                        <button type="submit" class="explorer-action-btn" title="Сохранить">✓</button>
+                        <button type="button" class="explorer-action-btn explorer-rename-cancel" title="Отмена">↩</button>
+                      </form>
+                    {% endif %}
+                  </div>
+                </td>
+                <td class="col-author"><span class="explorer-author" title="Загрузил пользователь">{{ item.author_username }}</span></td>
+                <td class="col-date">{{ item.created_at[:16].replace('T', ' ') }}</td>
+                <td class="col-type"><span class="explorer-ext">{{ item.file_name|file_type(item.mime_type) }}</span></td>
+                <td class="col-size">
+                  {% if item.size_bytes >= 1048576 %}
+                    {{ (item.size_bytes / 1048576)|round(1) }} МБ
+                  {% elif item.size_bytes >= 1024 %}
+                    {{ (item.size_bytes / 1024)|round(1) }} КБ
+                  {% else %}
+                    {{ item.size_bytes }} Б
+                  {% endif %}
+                </td>
+                <td class="col-actions">
+                  <div class="explorer-actions">
+                    {{ preview_open_action(item, request) }}
+                    {% if can_manage_file %}
+                      <button type="button" class="explorer-action-btn explorer-rename-open" title="Переименовать" aria-label="Переименовать">✎</button>
+                    {% endif %}
+                    {% if item.storage_name %}
+                      <a
+                        href="{{ request.url_for('cloud_file_download', file_id=item.id) }}"
+                        class="explorer-action-btn"
+                        title="Скачать"
+                        download
+                      >↓</a>
+                    {% elif item.web_view_link %}
+                      <a
+                        href="{{ item.web_view_link }}"
+                        class="explorer-action-btn"
+                        title="Скачать"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >↓</a>
+                    {% endif %}
+                    {% if can_manage_file %}
+                      <form
+                        method="post"
+                        action="{{ request.url_for('event_file_delete', event_id=event.id, file_id=item.id) }}"
+                        class="explorer-delete-form"
+                        onsubmit="return confirm('Удалить «{{ item.file_name }}» из события?');"
+                      >
+                        <button type="submit" class="explorer-action-btn explorer-action-btn-danger" title="Удалить" aria-label="Удалить">×</button>
+                      </form>
+                    {% endif %}
+                  </div>
+                </td>
+              </tr>
+            {% else %}
+              <tr class="explorer-empty-row">
+                <td colspan="7">
+                  <div class="explorer-empty">
+                    <p>Материалов пока нет</p>
+                    <p class="explorer-empty-hint">Нажмите <strong>+</strong> или перетащите файлы</p>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+{{ file_preview_modal() }}
+
+<script>
+  (() => {
+    const viewMode = document.getElementById("eventViewMode");
+    const editMode = document.getElementById("eventEditMode");
+    const openEdit = () => {
+      viewMode?.setAttribute("hidden", "");
+      editMode?.removeAttribute("hidden");
+      document.getElementById("id_event_title")?.focus();
+    };
+    const closeEdit = () => {
+      editMode?.setAttribute("hidden", "");
+      viewMode?.removeAttribute("hidden");
+    };
+    document.querySelectorAll(".event-edit-open-btn").forEach((btn) => {
+      btn.addEventListener("click", openEdit);
+    });
+    document.querySelector(".event-edit-cancel-btn")?.addEventListener("click", closeEdit);
+
+    const panel = document.getElementById("eventExplorerPanel");
+    const picker = document.getElementById("eventFilesPicker");
+    const form = document.getElementById("eventUploadForm");
+    const addBtn = document.getElementById("eventAddFileBtn");
+    let dragDepth = 0;
+
+    const submitFiles = (fileList) => {
+      if (!fileList || !fileList.length) return;
+      const dt = new DataTransfer();
+      for (const file of fileList) dt.items.add(file);
+      picker.files = dt.files;
+      form.submit();
+    };
+
+    addBtn?.addEventListener("click", () => picker.click());
+    picker?.addEventListener("change", () => {
+      if (picker.files.length) submitFiles(picker.files);
+    });
+
+    panel?.addEventListener("dragenter", (e) => {
+      e.preventDefault();
+      dragDepth += 1;
+      panel.classList.add("drag-over");
+    });
+    panel?.addEventListener("dragover", (e) => e.preventDefault());
+    panel?.addEventListener("dragleave", (e) => {
+      e.preventDefault();
+      dragDepth -= 1;
+      if (dragDepth <= 0) {
+        dragDepth = 0;
+        panel.classList.remove("drag-over");
+      }
+    });
+    panel?.addEventListener("drop", (e) => {
+      e.preventDefault();
+      dragDepth = 0;
+      panel.classList.remove("drag-over");
+      if (e.dataTransfer?.files?.length) submitFiles(e.dataTransfer.files);
+    });
+
+    const openRename = (row) => {
+      const nameEl = row.querySelector(".explorer-file-name");
+      const renameForm = row.querySelector(".explorer-rename-form");
+      const input = row.querySelector(".explorer-rename-input");
+      if (!nameEl || !renameForm || !input) return;
+      input.value = nameEl.textContent.trim();
+      nameEl.hidden = true;
+      renameForm.hidden = false;
+      input.focus();
+      input.select();
+    };
+
+    const closeRename = (row, restore) => {
+      const nameEl = row.querySelector(".explorer-file-name");
+      const renameForm = row.querySelector(".explorer-rename-form");
+      const input = row.querySelector(".explorer-rename-input");
+      if (!nameEl || !renameForm || !input) return;
+      if (restore) input.value = nameEl.textContent.trim();
+      renameForm.hidden = true;
+      nameEl.hidden = false;
+    };
+
+    document.querySelectorAll(".explorer-rename-open").forEach((btn) => {
+      btn.addEventListener("click", () => openRename(btn.closest(".explorer-row")));
+    });
+    document.querySelectorAll(".explorer-rename-cancel").forEach((btn) => {
+      btn.addEventListener("click", () => closeRename(btn.closest(".explorer-row"), true));
+    });
+    document.querySelectorAll(".explorer-rename-input").forEach((input) => {
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+          e.preventDefault();
+          closeRename(input.closest(".explorer-row"), true);
+        }
+      });
+    });
+  })();
+</script>
+{{ file_preview_script() }}
+{% endblock %}
