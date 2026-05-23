@@ -85,7 +85,8 @@ def register(
     db.commit()
     db.refresh(new_user)
     request.session["pending_verify_user_id"] = new_user.id
-    send_verification_email(new_user.email, new_user.email_code or "")
+    sent = send_verification_email(new_user.email, new_user.email_code or "")
+    request.session["verify_email_sent"] = sent
     db.close()
     return RedirectResponse(
         url="/accounts/verify-email/",
@@ -135,6 +136,19 @@ def login(
             status_code=status.HTTP_400_BAD_REQUEST,
         )
 
+    if user.is_banned:
+        db.close()
+        return templates.TemplateResponse(
+            request=request,
+            name="core/login.html",
+            context={
+                "error": "Аккаунт заблокирован администратором.",
+                "value": value,
+                "user": None,
+            },
+            status_code=status.HTTP_400_BAD_REQUEST,
+        )
+
     if not user.is_email_verified:
         request.session["pending_verify_user_id"] = user.id
         db.close()
@@ -160,6 +174,34 @@ def logout(request: Request):
     return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
 
 
+def _verify_email_context(request: Request, *, error=None, email_hint=None):
+    pending_id = request.session.get("pending_verify_user_id")
+    info = None
+    dev_code = None
+    sent_flag = request.session.pop("verify_email_sent", None)
+    if sent_flag is True:
+        info = "Код отправлен на почту. Проверьте входящие и папку «Спам»."
+    elif sent_flag is False:
+        info = "Письмо не отправлено: SMTP не настроен в файле .env на сервере."
+
+    if pending_id and email_hint is None:
+        db = SessionLocal()
+        user = db.query(User).filter(User.id == pending_id).first()
+        db.close()
+        if user:
+            email_hint = user.email
+            if sent_flag is False:
+                dev_code = user.email_code
+
+    return {
+        "error": error,
+        "info": info,
+        "email_hint": email_hint,
+        "dev_code": dev_code,
+        "user": None,
+    }
+
+
 @router.get("/accounts/verify-email/", name="verify_email")
 def verify_email_page(request: Request):
     pending_id = request.session.get("pending_verify_user_id")
@@ -168,7 +210,7 @@ def verify_email_page(request: Request):
     return templates.TemplateResponse(
         request=request,
         name="core/verify_email.html",
-        context={"error": None, "email_hint": None, "user": None},
+        context=_verify_email_context(request),
     )
 
 
@@ -192,11 +234,11 @@ def verify_email(request: Request, code: str = Form(...)):
         return templates.TemplateResponse(
             request=request,
             name="core/verify_email.html",
-            context={
-                "error": "Неверный или просроченный код. Запросите новый.",
-                "email_hint": user.email,
-                "user": None,
-            },
+            context=_verify_email_context(
+                request,
+                error="Неверный или просроченный код. Запросите новый.",
+                email_hint=user.email,
+            ),
             status_code=status.HTTP_400_BAD_REQUEST,
         )
 
@@ -227,15 +269,22 @@ def resend_verify_email(request: Request):
     user.email_code_expires_at = (utc_now() + timedelta(minutes=10)).isoformat()
     db.commit()
     sent = send_verification_email(user.email, user.email_code)
+    email_hint = user.email
+    dev_code = None if sent else user.email_code
     db.close()
 
-    message = (
-        "Новый код отправлен на почту."
-        if sent
-        else "SMTP не настроен. Код не отправлен."
-    )
     return templates.TemplateResponse(
         request=request,
         name="core/verify_email.html",
-        context={"error": message, "email_hint": user.email, "user": None},
+        context={
+            "error": None,
+            "info": (
+                "Новый код отправлен на почту."
+                if sent
+                else "SMTP не настроен. Письмо не отправлено."
+            ),
+            "email_hint": email_hint,
+            "dev_code": dev_code,
+            "user": None,
+        },
     )

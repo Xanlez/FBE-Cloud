@@ -7,6 +7,10 @@
 <h1 class="page-title">Админка</h1>
 <p class="admin-lead">Обзор системы: пользователи, файлы, события и активность.</p>
 
+{% if admin_message %}
+  <ul class="messages admin-flash"><li class="info">{{ admin_message }}</li></ul>
+{% endif %}
+
 <section class="admin-stats">
   <div class="admin-stat-card">
     <div class="admin-stat-value">{{ stats.users_count }}</div>
@@ -15,6 +19,10 @@
   <div class="admin-stat-card">
     <div class="admin-stat-value">{{ stats.users_verified }}</div>
     <div class="admin-stat-label">Email подтверждён</div>
+  </div>
+  <div class="admin-stat-card">
+    <div class="admin-stat-value">{{ stats.users_banned }}</div>
+    <div class="admin-stat-label">Заблокировано</div>
   </div>
   <div class="admin-stat-card">
     <div class="admin-stat-value">{{ stats.files_count }}</div>
@@ -71,22 +79,55 @@
           <th>Логин</th>
           <th>Email</th>
           <th>Подтверждён</th>
+          <th>Статус</th>
           <th>Персонал</th>
           <th>Staff</th>
+          <th>Действия</th>
         </tr>
       </thead>
       <tbody>
         {% for u in users %}
-          <tr>
+          <tr class="{% if u.is_banned %}admin-row-banned{% endif %}">
             <td>{{ u.id }}</td>
             <td><strong>{{ u.username }}</strong></td>
             <td>{{ u.email }}</td>
             <td>{% if u.is_email_verified %}✓{% else %}—{% endif %}</td>
+            <td>
+              {% if u.is_banned %}
+                <span class="admin-badge admin-badge-danger">бан</span>
+              {% else %}
+                <span class="admin-badge admin-badge-ok">активен</span>
+              {% endif %}
+            </td>
             <td>{% if u.is_personnel %}✓{% else %}—{% endif %}</td>
             <td>{% if u.is_staff %}✓{% else %}—{% endif %}</td>
+            <td class="admin-actions">
+              {% if u.id == user.id or u.is_personnel %}
+                <span class="admin-muted">—</span>
+              {% else %}
+                {% if u.is_banned %}
+                  <form method="post" action="/admin/">
+                    <input type="hidden" name="action" value="unban">
+                    <input type="hidden" name="user_id" value="{{ u.id }}">
+                    <button type="submit" class="btn btn-ghost btn-sm">Разбан</button>
+                  </form>
+                {% else %}
+                  <form method="post" action="/admin/">
+                    <input type="hidden" name="action" value="ban">
+                    <input type="hidden" name="user_id" value="{{ u.id }}">
+                    <button type="submit" class="btn btn-ghost btn-sm">Бан</button>
+                  </form>
+                {% endif %}
+                <form method="post" action="/admin/" onsubmit="return confirm('Удалить пользователя {{ u.username }} и все его данные? Это необратимо.');">
+                  <input type="hidden" name="action" value="delete">
+                  <input type="hidden" name="user_id" value="{{ u.id }}">
+                  <button type="submit" class="btn btn-ghost btn-sm admin-btn-danger">Удалить</button>
+                </form>
+              {% endif %}
+            </td>
           </tr>
         {% else %}
-          <tr><td colspan="6">Нет пользователей</td></tr>
+          <tr><td colspan="8">Нет пользователей</td></tr>
         {% endfor %}
       </tbody>
     </table>

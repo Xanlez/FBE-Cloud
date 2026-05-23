@@ -87,6 +87,7 @@ def load_admin_dashboard(db: Session) -> dict:
     stats = {
         "users_count": len(users),
         "users_verified": sum(1 for u in users if u.is_email_verified),
+        "users_banned": sum(1 for u in users if u.is_banned),
         "users_personnel": sum(1 for u in users if u.is_personnel),
         "files_count": len(files),
         "files_total_bytes": files_total_bytes,

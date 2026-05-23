@@ -36,7 +36,13 @@ def get_current_user(request: Request, db: Session) -> User | None:
     user_id = request.session.get("user_id")
     if not user_id:
         return None
-    return db.query(User).filter(User.id == user_id).first()
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        return None
+    if user.is_banned:
+        request.session.pop("user_id", None)
+        return None
+    return user
 
 
 def utc_now() -> datetime:

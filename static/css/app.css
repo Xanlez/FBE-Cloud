@@ -18,13 +18,31 @@
   box-sizing: border-box;
 }
 
+html {
+  margin: 0;
+  padding: 0;
+  background: var(--surface);
+}
+
 body {
   margin: 0;
+  padding: 0;
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
   font-family: "Segoe UI", system-ui, sans-serif;
-  background: radial-gradient(ellipse 120% 80% at 50% -20%, #1e3a5f 0%, var(--bg) 55%);
+  background: var(--surface);
   color: var(--text);
   line-height: 1.5;
+}
+
+.site-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding-top: var(--topbar-height);
+  background: radial-gradient(ellipse 120% 80% at 50% -20%, #1e3a5f 0%, var(--bg) 55%);
 }
 
 a {
@@ -42,12 +60,16 @@ a:hover {
   justify-content: space-between;
   flex-wrap: nowrap;
   padding: var(--topbar-vpad) var(--topbar-hpad);
-  min-height: var(--topbar-height);
+  height: var(--topbar-height);
+  max-height: var(--topbar-height);
+  box-sizing: border-box;
+  overflow: hidden;
   border-bottom: 1px solid var(--border);
-  background: rgba(26, 35, 50, 0.85);
-  backdrop-filter: blur(8px);
-  position: sticky;
+  background: var(--surface);
+  position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
   z-index: 10;
 }
 
@@ -77,14 +99,18 @@ a:hover {
 }
 
 @media (max-width: 700px) {
+  :root {
+    --topbar-height: 82px;
+  }
+
   .site-header {
     padding: 0.45rem 0.75rem;
-    min-height: 82px;
+    height: var(--topbar-height);
   }
 
   .menu-drawer-head {
     padding: 0.45rem 0.75rem;
-    min-height: 82px;
+    min-height: var(--topbar-height);
   }
 
   .header-left {
@@ -278,9 +304,11 @@ a:hover {
 }
 
 main {
+  width: 100%;
   max-width: 720px;
   margin: 0 auto;
   padding: 2.5rem 1.5rem 4rem;
+  box-sizing: border-box;
 }
 
 main.main-full {
@@ -481,6 +509,26 @@ main.main-full .demo-push-wrap {
 
 .messages .error {
   background: rgba(224, 122, 122, 0.12);
+}
+
+.messages .info {
+  background: rgba(91, 159, 212, 0.12);
+  border-color: rgba(91, 159, 212, 0.35);
+}
+
+.verify-dev-code {
+  margin: 0 0 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  background: rgba(224, 180, 90, 0.12);
+  border: 1px solid rgba(224, 180, 90, 0.35);
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+.site-body > main {
+  flex: 1;
+  align-self: stretch;
 }
 
 .site-footer {
@@ -1880,6 +1928,67 @@ main.main-messenger .messenger {
 
 .admin-vis-list strong {
   color: var(--accent-hover);
+}
+
+.admin-flash {
+  margin-bottom: 1.25rem;
+}
+
+.admin-badge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.admin-badge-ok {
+  background: rgba(91, 159, 212, 0.2);
+  color: var(--accent-hover);
+}
+
+.admin-badge-danger {
+  background: rgba(224, 122, 122, 0.2);
+  color: var(--danger);
+}
+
+.admin-row-banned {
+  opacity: 0.75;
+}
+
+.admin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.admin-actions form {
+  margin: 0;
+}
+
+.btn-sm {
+  padding: 0.28rem 0.55rem;
+  font-size: 0.78rem;
+}
+
+.admin-btn-danger {
+  color: var(--danger);
+  border-color: rgba(224, 122, 122, 0.45);
+}
+
+.admin-btn-danger:hover {
+  color: #fff;
+  background: rgba(224, 122, 122, 0.25);
+  border-color: var(--danger);
+}
+
+.admin-muted {
+  color: var(--muted);
+  font-size: 0.85rem;
 }
 
 @media (max-width: 900px) {

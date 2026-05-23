@@ -13,6 +13,7 @@ class User(Base):
     password_hash = Column(String(255), nullable=False)
     is_staff = Column(Boolean, default=False, nullable=False)
     is_personnel = Column(Boolean, default=False, nullable=False)
+    is_banned = Column(Boolean, default=False, nullable=False)
     is_email_verified = Column(Boolean, default=False, nullable=False)
     email_code = Column(String(6), nullable=True)
     email_code_expires_at = Column(String(40), nullable=True)

@@ -1,4 +1,5 @@
 import json
+import logging
 import smtplib
 from email.message import EmailMessage
 
@@ -24,9 +25,17 @@ except ImportError:
     build = None
     MediaIoBaseUpload = None
 
+logger = logging.getLogger(__name__)
+
 
 def send_verification_email(email_to: str, code: str) -> bool:
     if not SMTP_HOST or not SMTP_USER or not SMTP_PASSWORD:
+        logger.warning(
+            "SMTP не настроен (SMTP_HOST/SMTP_USER/SMTP_PASSWORD в .env). "
+            "Код для %s: %s",
+            email_to,
+            code,
+        )
         return False
 
     msg = EmailMessage()
@@ -37,10 +46,16 @@ def send_verification_email(email_to: str, code: str) -> bool:
         f"Ваш код подтверждения: {code}\n\nКод действует 10 минут.\nЕсли это не вы, просто проигнорируйте письмо."
     )
 
-    with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=20) as smtp:
-        smtp.starttls()
-        smtp.login(SMTP_USER, SMTP_PASSWORD)
-        smtp.send_message(msg)
+    try:
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=20) as smtp:
+            smtp.starttls()
+            smtp.login(SMTP_USER, SMTP_PASSWORD)
+            smtp.send_message(msg)
+    except Exception:
+        logger.exception("Не удалось отправить письмо на %s", email_to)
+        return False
+
+    logger.info("Код подтверждения отправлен на %s", email_to)
     return True
 
 

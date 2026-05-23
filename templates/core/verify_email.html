@@ -10,8 +10,14 @@
     {% if email_hint %}<br>Почта: <strong>{{ email_hint }}</strong>{% endif %}
   </p>
 
+  {% if info %}
+    <ul class="messages"><li class="info">{{ info }}</li></ul>
+  {% endif %}
   {% if error %}
     <ul class="messages"><li class="error">{{ error }}</li></ul>
+  {% endif %}
+  {% if dev_code %}
+    <p class="verify-dev-code">Код для проверки (SMTP не настроен): <strong>{{ dev_code }}</strong></p>
   {% endif %}
 
   <form method="post" action="{{ path_for(request, 'verify_email_post') }}">

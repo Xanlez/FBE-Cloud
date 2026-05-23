@@ -39,6 +39,10 @@ def ensure_users_table_columns():
             conn.execute(
                 text("ALTER TABLE users ADD COLUMN is_personnel BOOLEAN NOT NULL DEFAULT 0")
             )
+        if "is_banned" not in existing:
+            conn.execute(
+                text("ALTER TABLE users ADD COLUMN is_banned BOOLEAN NOT NULL DEFAULT 0")
+            )
         conn.execute(
             text("UPDATE users SET is_personnel = 1 WHERE lower(username) = 'xanlez'")
         )

@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}FBE cloud{% endblock %}</title>
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
-  <link rel="stylesheet" href="/static/css/app.css?v=33">
+  <link rel="stylesheet" href="/static/css/app.css?v=39">
 </head>
 <body>
   <header class="site-header">
@@ -39,18 +39,20 @@
       {% endif %}
     </nav>
   </header>
-  <main class="{% block main_class %}{% endblock %}">
-    {% if user %}
-      <div class="demo-push-wrap">
-        {{ demo_push_notice() }}
-      </div>
-    {% endif %}
-    {% block content %}{% endblock %}
-  </main>
-  <footer class="site-footer">
-    <div>FBE cloud v1.1p, presentation version</div>
-    <div>by Xanlez, 2026</div>
-  </footer>
+  <div class="site-body">
+    <main class="{% block main_class %}{% endblock %}">
+      {% if user %}
+        <div class="demo-push-wrap">
+          {{ demo_push_notice() }}
+        </div>
+      {% endif %}
+      {% block content %}{% endblock %}
+    </main>
+    <footer class="site-footer">
+      <div>FBE cloud v1.54pr, presentation version</div>
+      <div>by Xanlez, 2026</div>
+    </footer>
+  </div>
   {% if user %}
     <div class="menu-backdrop" id="menuBackdrop"></div>
     <aside class="menu-drawer" id="sideMenu" aria-hidden="true">
