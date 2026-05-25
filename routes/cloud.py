@@ -17,6 +17,7 @@ from app.cloud_query import (
     shared_cloud_url,
 )
 from app.event_dates import parse_event_date
+from app.flash import apply_flash, redirect_with_flash
 from app.file_storage import delete_blob_if_unused, resolve_storage_path, save_upload
 from app.upload_limits import (
     check_can_add_files,
@@ -169,10 +170,10 @@ def files_rename(request: Request, file_id: int, file_name: str = Form(...)):
         return RedirectResponse(url="/files/", status_code=status.HTTP_303_SEE_OTHER)
     if not new_name:
         db.close()
-        return _files_page_response(
+        return redirect_with_flash(
+            "/files/",
             request,
             error="Имя файла не может быть пустым.",
-            status_code=status.HTTP_400_BAD_REQUEST,
         )
     if len(new_name) > 255:
         new_name = new_name[:255]
@@ -180,7 +181,11 @@ def files_rename(request: Request, file_id: int, file_name: str = Form(...)):
     row.file_name = new_name
     db.commit()
     db.close()
-    return _files_page_response(request, success=f"Файл переименован в «{new_name}».")
+    return redirect_with_flash(
+        "/files/",
+        request,
+        success=f"Файл переименован в «{new_name}».",
+    )
 
 
 @router.post("/files/{file_id}/delete/", name="files_delete")
@@ -202,7 +207,15 @@ def files_delete(request: Request, file_id: int):
     db.commit()
     delete_blob_if_unused(db, storage_name)
     db.close()
-    return _files_page_response(request, success=f"Файл «{file_label}» удалён.")
+    return redirect_with_flash(
+        "/files/",
+        request,
+        success=f"Файл «{file_label}» удалён.",
+    )
+
+
+def _event_detail_url(event_id: int) -> str:
+    return f"/cloud/events/{event_id}/"
 
 
 @router.get("/files/", name="files")
@@ -211,6 +224,7 @@ def files_page(request: Request):
 
 
 def _files_page_response(request: Request, error=None, success=None, status_code=200):
+    error, success = apply_flash(request, error, success)
     db = SessionLocal()
     user = get_current_user(request, db)
     if not user:
@@ -253,19 +267,15 @@ async def files_upload(request: Request, files: list[UploadFile] = File(default=
     uploads = collect_upload_files(files)
     if not uploads:
         db.close()
-        return _files_page_response(
+        return redirect_with_flash(
+            "/files/",
             request,
             error="Выберите файл для загрузки.",
-            status_code=status.HTTP_400_BAD_REQUEST,
         )
     quota_err = check_can_add_files(db, user.id, len(uploads))
     if quota_err:
         db.close()
-        return _files_page_response(
-            request,
-            error=quota_err,
-            status_code=status.HTTP_400_BAD_REQUEST,
-        )
+        return redirect_with_flash("/files/", request, error=quota_err)
 
     saved = 0
     errors: list[str] = []
@@ -287,10 +297,10 @@ async def files_upload(request: Request, files: list[UploadFile] = File(default=
 
     db.close()
     if saved == 0:
-        return _files_page_response(
+        return redirect_with_flash(
+            "/files/",
             request,
             error=errors[0] if len(errors) == 1 else "; ".join(errors),
-            status_code=status.HTTP_400_BAD_REQUEST,
         )
 
     if saved == 1:
@@ -299,7 +309,7 @@ async def files_upload(request: Request, files: list[UploadFile] = File(default=
         success = f"Загружено файлов: {saved}."
     if errors:
         success += f" Ошибки: {'; '.join(errors)}"
-    return _files_page_response(request, success=success)
+    return redirect_with_flash("/files/", request, success=success)
 
 
 def _shared_page_response(
@@ -309,6 +319,7 @@ def _shared_page_response(
     success=None,
     status_code=200,
 ):
+    error, success = apply_flash(request, error, success)
     db = SessionLocal()
     user = get_current_user(request, db)
     if not user:
@@ -375,19 +386,20 @@ def shared_cloud_rename(
         return RedirectResponse(url=shared_cloud_url(request, filters), status_code=status.HTTP_303_SEE_OTHER)
     if not new_name:
         db.close()
-        return _shared_page_response(
+        return redirect_with_flash(
+            shared_cloud_url(request, filters),
             request,
-            filters,
             error="Имя файла не может быть пустым.",
-            status_code=status.HTTP_400_BAD_REQUEST,
         )
     if len(new_name) > 255:
         new_name = new_name[:255]
     row.file_name = new_name
     db.commit()
     db.close()
-    return _shared_page_response(
-        request, filters, success=f"Файл переименован в «{new_name}»."
+    return redirect_with_flash(
+        shared_cloud_url(request, filters),
+        request,
+        success=f"Файл переименован в «{new_name}».",
     )
 
 
@@ -419,8 +431,10 @@ def shared_cloud_delete(
     db.commit()
     delete_blob_if_unused(db, storage_name)
     db.close()
-    return _shared_page_response(
-        request, filters, success=f"Файл «{file_label}» удалён."
+    return redirect_with_flash(
+        shared_cloud_url(request, filters),
+        request,
+        success=f"Файл «{file_label}» удалён.",
     )
 
 
@@ -449,23 +463,18 @@ async def shared_cloud_upload(
             files = [single]
 
     uploads = collect_upload_files(files)
+    redirect_url = shared_cloud_url(request, filters)
     if not uploads:
         db.close()
-        return _shared_page_response(
+        return redirect_with_flash(
+            redirect_url,
             request,
-            filters,
             error="Выберите файл для загрузки.",
-            status_code=status.HTTP_400_BAD_REQUEST,
         )
     quota_err = check_can_add_files(db, user.id, len(uploads))
     if quota_err:
         db.close()
-        return _shared_page_response(
-            request,
-            filters,
-            error=quota_err,
-            status_code=status.HTTP_400_BAD_REQUEST,
-        )
+        return redirect_with_flash(redirect_url, request, error=quota_err)
 
     saved = 0
     errors: list[str] = []
@@ -487,11 +496,10 @@ async def shared_cloud_upload(
 
     db.close()
     if saved == 0:
-        return _shared_page_response(
+        return redirect_with_flash(
+            redirect_url,
             request,
-            filters,
             error=errors[0] if len(errors) == 1 else "; ".join(errors),
-            status_code=status.HTTP_400_BAD_REQUEST,
         )
 
     if saved == 1:
@@ -500,7 +508,7 @@ async def shared_cloud_upload(
         success = f"Загружено файлов: {saved}."
     if errors:
         success += f" Ошибки: {'; '.join(errors)}"
-    return _shared_page_response(request, filters, success=success)
+    return redirect_with_flash(redirect_url, request, success=success)
 
 
 @router.get("/cloud/events/", name="events_cloud")
@@ -689,6 +697,7 @@ def _event_detail_response(
     status_code=200,
     show_edit: bool | None = None,
 ):
+    error, success = apply_flash(request, error, success)
     db = SessionLocal()
     user = get_current_user(request, db)
     if not user:
@@ -744,17 +753,14 @@ async def event_upload(request: Request, event_id: int, files: list[UploadFile] 
             files = [single]
 
     uploads = collect_upload_files(files)
+    event_url = _event_detail_url(event_id)
     if not uploads:
         db.close()
-        return _event_detail_response(
-            request, event_id, error="Выберите файл.", status_code=status.HTTP_400_BAD_REQUEST
-        )
+        return redirect_with_flash(event_url, request, error="Выберите файл.")
     quota_err = check_can_add_files(db, user.id, len(uploads))
     if quota_err:
         db.close()
-        return _event_detail_response(
-            request, event_id, error=quota_err, status_code=status.HTTP_400_BAD_REQUEST
-        )
+        return redirect_with_flash(event_url, request, error=quota_err)
 
     saved = 0
     errors: list[str] = []
@@ -776,11 +782,10 @@ async def event_upload(request: Request, event_id: int, files: list[UploadFile] 
 
     db.close()
     if saved == 0:
-        return _event_detail_response(
+        return redirect_with_flash(
+            event_url,
             request,
-            event_id,
             error=errors[0] if len(errors) == 1 else "; ".join(errors),
-            status_code=status.HTTP_400_BAD_REQUEST,
         )
 
     if saved == 1:
@@ -789,7 +794,7 @@ async def event_upload(request: Request, event_id: int, files: list[UploadFile] 
         success = f"Загружено файлов: {saved}."
     if errors:
         success += f" Ошибки: {'; '.join(errors)}"
-    return _event_detail_response(request, event_id, success=success)
+    return redirect_with_flash(event_url, request, success=success)
 
 
 @router.post("/cloud/events/{event_id}/attach-existing/", name="event_attach_existing")
@@ -811,9 +816,7 @@ def event_attach_existing(request: Request, event_id: int, file_id: int = Form(.
     quota_err = check_can_add_files(db, user.id, 1)
     if quota_err:
         db.close()
-        return _event_detail_response(
-            request, event_id, error=quota_err, status_code=status.HTTP_400_BAD_REQUEST
-        )
+        return redirect_with_flash(_event_detail_url(event_id), request, error=quota_err)
     if source and (source.storage_name or source.web_view_link):
         row = CloudFile(
             owner_user_id=user.id,
@@ -854,27 +857,30 @@ def event_file_rename(
 
     row = _get_event_file(db, event_id, file_id)
     new_name = file_name.strip()
+    event_url = _event_detail_url(event_id)
     if not row or not _user_can_manage_event_file(db, user.id, row, event):
         db.close()
-        return _event_detail_response(
+        return redirect_with_flash(
+            event_url,
             request,
-            event_id,
             error="Нельзя переименовать этот файл.",
-            status_code=status.HTTP_400_BAD_REQUEST,
         )
     if not new_name:
         db.close()
-        return _event_detail_response(
+        return redirect_with_flash(
+            event_url,
             request,
-            event_id,
             error="Имя файла не может быть пустым.",
-            status_code=status.HTTP_400_BAD_REQUEST,
         )
 
     row.file_name = new_name[:255]
     db.commit()
     db.close()
-    return _event_detail_response(request, event_id, success=f"Файл переименован в «{new_name[:255]}».")
+    return redirect_with_flash(
+        event_url,
+        request,
+        success=f"Файл переименован в «{new_name[:255]}».",
+    )
 
 
 @router.post("/cloud/events/{event_id}/files/{file_id}/delete/", name="event_file_delete")
@@ -891,13 +897,13 @@ def event_file_delete(request: Request, event_id: int, file_id: int):
         return RedirectResponse(url="/cloud/events/", status_code=status.HTTP_303_SEE_OTHER)
 
     row = _get_event_file(db, event_id, file_id)
+    event_url = _event_detail_url(event_id)
     if not row or not _user_can_manage_event_file(db, user.id, row, event):
         db.close()
-        return _event_detail_response(
+        return redirect_with_flash(
+            event_url,
             request,
-            event_id,
             error="Нельзя удалить этот файл.",
-            status_code=status.HTTP_400_BAD_REQUEST,
         )
 
     file_label = row.file_name
@@ -906,7 +912,11 @@ def event_file_delete(request: Request, event_id: int, file_id: int):
     db.commit()
     delete_blob_if_unused(db, storage_name)
     db.close()
-    return _event_detail_response(request, event_id, success=f"Файл «{file_label}» удалён из события.")
+    return redirect_with_flash(
+        event_url,
+        request,
+        success=f"Файл «{file_label}» удалён из события.",
+    )
 
 
 @router.post("/cloud/events/{event_id}/add-participant/", name="event_add_participant")
@@ -926,13 +936,13 @@ def event_add_participant(
     if not event or event.creator_user_id != user.id:
         db.close()
         return RedirectResponse(url="/cloud/events/", status_code=status.HTTP_303_SEE_OTHER)
+    event_url = _event_detail_url(event_id)
     if not event.is_private:
         db.close()
-        return _event_detail_response(
+        return redirect_with_flash(
+            event_url,
             request,
-            event_id,
             error="Участников можно добавлять только в закрытые события.",
-            status_code=status.HTTP_400_BAD_REQUEST,
         )
 
     target: User | None = None
@@ -944,19 +954,17 @@ def event_add_participant(
             friend_pk = int(friend_raw)
         except ValueError:
             db.close()
-            return _event_detail_response(
+            return redirect_with_flash(
+                event_url,
                 request,
-                event_id,
                 error="Некорректный выбор из списка друзей.",
-                status_code=status.HTTP_400_BAD_REQUEST,
             )
         if not are_friends(db, user.id, friend_pk):
             db.close()
-            return _event_detail_response(
+            return redirect_with_flash(
+                event_url,
                 request,
-                event_id,
                 error="Из списка можно добавить только друзей.",
-                status_code=status.HTTP_400_BAD_REQUEST,
             )
         target = db.query(User).filter(User.id == friend_pk).first()
     elif username_clean:
@@ -967,19 +975,17 @@ def event_add_participant(
         )
         if not target:
             db.close()
-            return _event_detail_response(
+            return redirect_with_flash(
+                event_url,
                 request,
-                event_id,
                 error=f"Пользователь «{username_clean}» не найден.",
-                status_code=status.HTTP_400_BAD_REQUEST,
             )
     else:
         db.close()
-        return _event_detail_response(
+        return redirect_with_flash(
+            event_url,
             request,
-            event_id,
             error="Выберите друга из списка или введите логин пользователя.",
-            status_code=status.HTTP_400_BAD_REQUEST,
         )
 
     if target.id in {
@@ -987,11 +993,10 @@ def event_add_participant(
         for p in db.query(EventParticipant).filter(EventParticipant.event_id == event_id).all()
     }:
         db.close()
-        return _event_detail_response(
+        return redirect_with_flash(
+            event_url,
             request,
-            event_id,
             error=f"«{target.username}» уже в списке участников.",
-            status_code=status.HTTP_400_BAD_REQUEST,
         )
 
     db.add(
@@ -1005,9 +1010,9 @@ def event_add_participant(
     added_username = target.username
     db.commit()
     db.close()
-    return _event_detail_response(
+    return redirect_with_flash(
+        event_url,
         request,
-        event_id,
         success=f"«{added_username}» добавлен в участники.",
     )
 
@@ -1033,22 +1038,18 @@ def event_rename(
 
     title_clean = title.strip()
     parsed_date = parse_event_date(event_date)
+    event_url = _event_detail_url(event_id)
     if not title_clean or not parsed_date:
         error = "Название не может быть пустым." if not title_clean else "Выберите дату в календаре."
         db.close()
-        return _event_detail_response(
-            request,
-            event_id,
-            error=error,
-            status_code=status.HTTP_400_BAD_REQUEST,
-        )
+        return redirect_with_flash(event_url, request, error=error)
 
     event.title = title_clean[:255]
     event.description = description.strip()[:1000]
     event.event_date = parsed_date
     db.commit()
     db.close()
-    return _event_detail_response(request, event_id, success="Событие обновлено.")
+    return redirect_with_flash(event_url, request, success="Событие обновлено.")
 
 
 @router.post("/cloud/events/{event_id}/delete/", name="event_delete")
