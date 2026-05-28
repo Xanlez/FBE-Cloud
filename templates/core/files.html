@@ -1,5 +1,5 @@
 ﻿{% extends "base.html" %}
-{% from "core/macros/file_preview.html" import preview_cell, preview_open_action, file_preview_modal, file_preview_script %}
+{% from "core/macros/file_preview.html" import preview_cell, preview_open_action %}
 
 {% block title %}Мои файлы — FBE cloud{% endblock %}
 {% block main_class %}main-full{% endblock %}
@@ -126,7 +126,6 @@
     </div>
   </div>
 </section>
-{{ file_preview_modal() }}
 
 <script>
   (() => {
@@ -210,5 +209,4 @@
     });
   })();
 </script>
-{{ file_preview_script() }}
 {% endblock %}

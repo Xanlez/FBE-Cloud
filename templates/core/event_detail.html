@@ -1,10 +1,12 @@
 ﻿{% extends "base.html" %}
-{% from "core/macros/file_preview.html" import preview_cell, preview_open_action, file_preview_modal, file_preview_script %}
+{% from "core/macros/file_preview.html" import preview_cell, preview_open_action %}
+{% from "core/macros/report_file.html" import report_file_action %}
 
 {% block title %}{{ event.title }} — FBE cloud{% endblock %}
 {% block main_class %}main-full main-messenger{% endblock %}
 
 {% block content %}
+{% set report_return = request.url.path ~ ('?' ~ request.url.query if request.url.query else '') %}
 <section class="event-explorer">
   <aside class="event-sidebar">
     <a href="{{ path_for(request, 'events_cloud') }}" class="event-back-link">← Все события</a>
@@ -119,6 +121,81 @@
   </aside>
 
   <div class="event-explorer-main explorer" id="eventFilesExplorer">
+    {% if error %}
+      <ul class="messages explorer-messages"><li class="error">{{ error }}</li></ul>
+    {% endif %}
+    {% if success %}
+      <ul class="messages explorer-messages"><li>{{ success }}</li></ul>
+    {% endif %}
+
+    <nav class="event-main-tabs" aria-label="Разделы события">
+      <a
+        href="{{ path_for(request, 'event_detail', event_id=event.id) }}?tab=files"
+        class="event-tab {% if active_tab == 'files' %}is-active{% endif %}"
+      >Материалы</a>
+      <a
+        href="{{ path_for(request, 'event_detail', event_id=event.id) }}?tab=chat"
+        class="event-tab {% if active_tab == 'chat' %}is-active{% endif %}"
+      >Чат{% if participants %} · {{ participants|length }}{% endif %}</a>
+    </nav>
+
+    {% if active_tab == 'chat' %}
+    <div class="messenger-chat-pane event-chat-pane">
+      <header class="messenger-chat-head">
+        <span class="messenger-chat-avatar">💬</span>
+        <div>
+          <div class="messenger-chat-title">Чат события</div>
+          <div class="messenger-chat-subtitle">
+            {% if event.is_private %}
+              {% if participants|length %}{{ participants|length }} участник{% if participants|length > 1 and participants|length < 5 %}а{% elif participants|length >= 5 %}ов{% endif %}{% else %}Пока нет участников{% endif %}
+            {% else %}
+              Общий чат для всех с доступом к событию
+            {% endif %}
+          </div>
+        </div>
+      </header>
+
+      <div class="messenger-messages" id="eventChatMessages">
+        {% if chat_messages %}
+          {% for m in chat_messages %}
+            <div class="messenger-bubble {% if m.sender_user_id == user.id %}messenger-bubble-own{% else %}messenger-bubble-other{% endif %}">
+              {% if m.sender_user_id != user.id %}
+                <div class="messenger-bubble-sender">{{ m.sender_username }}</div>
+              {% endif %}
+              {% if m.text %}
+                <div class="messenger-bubble-text">{{ m.text }}</div>
+              {% endif %}
+              {% if m.file_link %}
+                <a href="{{ m.file_link }}" class="messenger-bubble-file" target="_blank" rel="noopener noreferrer">📎 {{ m.file_name }}</a>
+              {% endif %}
+              <time class="messenger-bubble-time">{{ m.created_at[:16].replace('T', ' ') }}</time>
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="messenger-main-empty">Напишите первое сообщение участникам</div>
+        {% endif %}
+      </div>
+
+      <footer class="messenger-compose">
+        <form method="post" action="{{ path_for(request, 'event_chat_send', event_id=event.id) }}" class="messenger-compose-form">
+          <select name="file_id" class="messenger-compose-attach" title="Прикрепить файл">
+            <option value="">📎</option>
+            {% for f in chat_attachable_files %}
+              <option value="{{ f.id }}">{{ f.file_name }}</option>
+            {% endfor %}
+          </select>
+          <input
+            type="text"
+            name="text_message"
+            class="messenger-compose-input"
+            placeholder="Сообщение участникам…"
+            autocomplete="off"
+          >
+          <button type="submit" class="messenger-compose-send" title="Отправить" aria-label="Отправить">➤</button>
+        </form>
+      </footer>
+    </div>
+    {% else %}
     <div class="explorer-toolbar">
       <div class="explorer-toolbar-left">
         <h2 class="explorer-title">Материалы</h2>
@@ -139,13 +216,6 @@
         </button>
       </div>
     </div>
-
-    {% if error %}
-      <ul class="messages explorer-messages"><li class="error">{{ error }}</li></ul>
-    {% endif %}
-    {% if success %}
-      <ul class="messages explorer-messages"><li>{{ success }}</li></ul>
-    {% endif %}
 
     <form
       id="eventUploadForm"
@@ -240,6 +310,8 @@
                       >
                         <button type="submit" class="explorer-action-btn explorer-action-btn-danger" title="Удалить" aria-label="Удалить">×</button>
                       </form>
+                    {% elif item.owner_user_id != user.id %}
+                      {{ report_file_action(item, request, report_return) }}
                     {% endif %}
                   </div>
                 </td>
@@ -258,12 +330,15 @@
         </table>
       </div>
     </div>
+    {% endif %}
   </div>
 </section>
-{{ file_preview_modal() }}
 
 <script>
   (() => {
+    const chatBox = document.getElementById("eventChatMessages");
+    if (chatBox) chatBox.scrollTop = chatBox.scrollHeight;
+
     const viewMode = document.getElementById("eventViewMode");
     const editMode = document.getElementById("eventEditMode");
     const openEdit = () => {
@@ -358,5 +433,4 @@
     });
   })();
 </script>
-{{ file_preview_script() }}
 {% endblock %}

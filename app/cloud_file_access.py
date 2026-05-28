@@ -5,7 +5,15 @@ from app.social_utils import can_access_event
 from models import CloudFile, Event, Message
 
 
-def user_can_access_file(db: Session, user_id: int, row: CloudFile) -> bool:
+def user_can_access_file(
+    db: Session,
+    user_id: int,
+    row: CloudFile,
+    *,
+    personnel: bool = False,
+) -> bool:
+    if personnel:
+        return True
     if row.owner_user_id == user_id:
         return True
     if row.visibility == "shared":

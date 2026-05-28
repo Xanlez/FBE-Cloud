@@ -11,8 +11,7 @@ SECRET_KEY = os.environ.get(
     "APP_SECRET_KEY", "dev-only-change-me-in-production-not-for-production-use"
 )
 
-# Public URL when behind reverse proxy (optional if Host / X-Forwarded-* are set).
-# Example: http://fbecloud.houseslippers.netcraze.link:81
+
 PUBLIC_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "").rstrip("/")
 TRUST_PROXY = os.environ.get("TRUST_PROXY", "").lower() in ("1", "true", "yes")
 APP_PORT = int(os.environ.get("PORT", "1010"))

@@ -4,10 +4,12 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.settings import DATA_DIR
+from app.file_reports import report_counts_by_file_ids
 from models import (
     CloudFile,
     Event,
     EventParticipant,
+    FileReport,
     FriendRequest,
     Friendship,
     Message,
@@ -52,13 +54,17 @@ def load_admin_dashboard(db: Session) -> dict:
     usernames = {u.id: u.username for u in users}
     event_titles = {e.id: e.title for e in events}
 
+    report_counts = report_counts_by_file_ids(db, [f.id for f in files])
     for row in files:
         row.owner_username = usernames.get(row.owner_user_id, "—")
         row.visibility_label = VISIBILITY_LABELS.get(row.visibility, row.visibility)
+        row.report_count = report_counts.get(row.id, 0)
         if row.event_id:
             row.event_title = event_titles.get(row.event_id, f"#{row.event_id}")
         else:
             row.event_title = "—"
+
+    files.sort(key=lambda f: (-f.report_count, -f.id))
 
     for row in events:
         row.creator_username = usernames.get(row.creator_user_id, "—")
@@ -90,6 +96,8 @@ def load_admin_dashboard(db: Session) -> dict:
         "users_banned": sum(1 for u in users if u.is_banned),
         "users_personnel": sum(1 for u in users if u.is_personnel),
         "files_count": len(files),
+        "files_reported": sum(1 for f in files if f.report_count > 0),
+        "file_reports_total": db.query(FileReport).count(),
         "files_total_bytes": files_total_bytes,
         "files_disk_bytes": _disk_usage_bytes(DATA_DIR),
         "files_by_visibility": files_by_visibility,

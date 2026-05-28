@@ -1,10 +1,10 @@
 ﻿{% extends "base.html" %}
+{% from "core/macros/app_page.html" import app_page %}
 
 {% block title %}Чат с {{ friend.username }} — FBE cloud{% endblock %}
 
 {% block content %}
-<h1 class="page-title">Чат с {{ friend.username }}</h1>
-
+{% call app_page("Чат с " ~ friend.username) %}
 <div class="card">
   {% if messages %}
     <div class="chat-list">
@@ -14,21 +14,21 @@
             <div>{{ m.text }}</div>
           {% endif %}
           {% if m.file_link %}
-            <div style="margin-top:0.35rem;">
+            <div class="chat-item-file">
               <a href="{{ m.file_link }}" target="_blank" rel="noopener noreferrer">{{ m.file_name }}</a>
             </div>
           {% endif %}
-          <div class="file-meta" style="margin-top:0.35rem;">{{ m.created_at }}</div>
+          <div class="file-meta chat-item-time">{{ m.created_at }}</div>
         </div>
       {% endfor %}
     </div>
   {% else %}
-    <p>Сообщений пока нет.</p>
+    <p class="app-prose-muted">Сообщений пока нет.</p>
   {% endif %}
 </div>
 
 <div class="card form-card">
-  <h2 style="margin-top:0;">Отправить сообщение</h2>
+  <h2 class="card-section-title">Отправить сообщение</h2>
   <form method="post" action="{{ path_for(request, 'social_chat_send', friend_id=friend.id) }}">
     <div class="form-group">
       <label for="id_text">Текст</label>
@@ -38,12 +38,13 @@
       <label for="id_file">Прикрепить файл (опционально)</label>
       <select id="id_file" name="file_id" class="form-input">
         <option value="">Без файла</option>
-        {% for f in own_files %}
-          <option value="{{ f.id }}">{{ f.file_name }}</option>
+        {% for f in user_files %}
+          <option value="{{ f.id }}">{{ f.original_name }}</option>
         {% endfor %}
       </select>
     </div>
-    <button type="submit" class="btn btn-primary" style="width:100%;">Отправить</button>
+    <button type="submit" class="btn btn-primary btn-block">Отправить</button>
   </form>
 </div>
+{% endcall %}
 {% endblock %}

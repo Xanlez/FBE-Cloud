@@ -4,7 +4,7 @@ from fastapi import APIRouter, File, Form, Request, UploadFile, status
 from sqlalchemy import func
 from fastapi.responses import FileResponse, RedirectResponse
 
-from app.auth_utils import get_current_user, utc_now
+from app.auth_utils import get_current_user, user_is_personnel, utc_now
 from app.cloud_file_access import user_can_access_file
 from app.db_utils import SessionLocal
 from app.cloud_query import (
@@ -17,6 +17,7 @@ from app.cloud_query import (
     shared_cloud_url,
 )
 from app.event_dates import parse_event_date
+from app.file_reports import create_file_report, delete_reports_for_file
 from app.flash import apply_flash, redirect_with_flash
 from app.file_storage import delete_blob_if_unused, resolve_storage_path, save_upload
 from app.upload_limits import (
@@ -26,7 +27,8 @@ from app.upload_limits import (
     upload_limit_hint,
     validate_upload_file_size,
 )
-from models import CloudFile, Event, EventParticipant, User
+from app.chat_utils import load_event_chat_attachable_files, load_event_chat_messages
+from models import CloudFile, Event, EventMessage, EventParticipant, User
 from app.social_utils import (
     are_friends,
     attach_event_creators,
@@ -39,6 +41,23 @@ from app.social_utils import (
 from app.web import templates
 
 router = APIRouter()
+
+_ALLOWED_REPORT_RETURN_PREFIXES = (
+    "/files/",
+    "/cloud/shared/",
+    "/cloud/events/",
+)
+
+
+def _safe_report_return_path(raw: str | None, default: str = "/cloud/shared/") -> str:
+    if not raw or not raw.startswith("/") or raw.startswith("//"):
+        return default
+    if "://" in raw:
+        return default
+    path = raw.split("#", 1)[0]
+    if not any(path.startswith(prefix) for prefix in _ALLOWED_REPORT_RETURN_PREFIXES):
+        return default
+    return path[:500]
 
 
 def _local_drive_file_id() -> str:
@@ -73,7 +92,8 @@ def cloud_file_download(request: Request, file_id: int):
         return RedirectResponse(url="/accounts/login/", status_code=status.HTTP_303_SEE_OTHER)
 
     row = db.query(CloudFile).filter(CloudFile.id == file_id).first()
-    if not row or not user_can_access_file(db, user.id, row):
+    personnel = user_is_personnel(user)
+    if not row or not user_can_access_file(db, user.id, row, personnel=personnel):
         db.close()
         return RedirectResponse(url="/files/", status_code=status.HTTP_303_SEE_OTHER)
 
@@ -106,7 +126,8 @@ def cloud_file_preview(request: Request, file_id: int):
         return RedirectResponse(url="/accounts/login/", status_code=status.HTTP_303_SEE_OTHER)
 
     row = db.query(CloudFile).filter(CloudFile.id == file_id).first()
-    if not row or not user_can_access_file(db, user.id, row):
+    personnel = user_is_personnel(user)
+    if not row or not user_can_access_file(db, user.id, row, personnel=personnel):
         db.close()
         return RedirectResponse(url="/files/", status_code=status.HTTP_303_SEE_OTHER)
 
@@ -203,6 +224,7 @@ def files_delete(request: Request, file_id: int):
 
     storage_name = row.storage_name
     file_label = row.file_name
+    delete_reports_for_file(db, file_id)
     db.delete(row)
     db.commit()
     delete_blob_if_unused(db, storage_name)
@@ -214,8 +236,46 @@ def files_delete(request: Request, file_id: int):
     )
 
 
-def _event_detail_url(event_id: int) -> str:
-    return f"/cloud/events/{event_id}/"
+@router.post("/cloud/files/{file_id}/report/", name="file_report")
+def file_report(
+    request: Request,
+    file_id: int,
+    return_to: str = Form("/cloud/shared/"),
+):
+    return_path = _safe_report_return_path(return_to)
+    db = SessionLocal()
+    user = get_current_user(request, db)
+    if not user:
+        db.close()
+        return RedirectResponse(url="/accounts/login/", status_code=status.HTTP_303_SEE_OTHER)
+
+    row = db.query(CloudFile).filter(CloudFile.id == file_id).first()
+    if not row:
+        db.close()
+        return redirect_with_flash(return_path, request, error="Файл не найден.")
+    if row.owner_user_id == user.id:
+        db.close()
+        return redirect_with_flash(
+            return_path,
+            request,
+            error="Нельзя пожаловаться на свой файл.",
+        )
+    if not user_can_access_file(db, user.id, row):
+        db.close()
+        return redirect_with_flash(return_path, request, error="Нет доступа к этому файлу.")
+
+    ok, message = create_file_report(db, file_id, user.id)
+    db.close()
+    if ok:
+        return redirect_with_flash(return_path, request, success=message)
+    return redirect_with_flash(return_path, request, error=message)
+
+
+def _event_detail_url(event_id: int, tab: str | None = None) -> str:
+    url = f"/cloud/events/{event_id}/"
+    if tab:
+        url += f"?tab={tab}"
+    return url
 
 
 @router.get("/files/", name="files")
@@ -427,6 +487,7 @@ def shared_cloud_delete(
 
     storage_name = row.storage_name
     file_label = row.file_name
+    delete_reports_for_file(db, file_id)
     db.delete(row)
     db.commit()
     delete_blob_if_unused(db, storage_name)
@@ -624,6 +685,7 @@ def _user_can_manage_event_file(db, user_id: int, row: CloudFile, event: Event) 
 
 
 def _event_detail_context(
+    request: Request,
     db,
     user: User,
     event: Event,
@@ -631,6 +693,7 @@ def _event_detail_context(
     error=None,
     success=None,
     show_edit: bool = False,
+    active_tab: str = "files",
 ):
     items = _load_event_items(db, event_id)
     friend_ids = get_friend_ids(db, user.id)
@@ -661,6 +724,9 @@ def _event_detail_context(
         "participants": participants,
         "participant_ids": participant_ids,
         "attachable_files": attachable_files,
+        "chat_messages": load_event_chat_messages(db, request, event_id),
+        "chat_attachable_files": load_event_chat_attachable_files(db, user.id, event_id),
+        "active_tab": active_tab,
         "error": error,
         "success": success,
         "show_edit": show_edit,
@@ -681,10 +747,12 @@ def _delete_event_completely(db, event_id: int) -> None:
     files = db.query(CloudFile).filter(CloudFile.event_id == event_id).all()
     for row in files:
         storage_name = row.storage_name
+        delete_reports_for_file(db, row.id)
         db.delete(row)
         db.flush()
         delete_blob_if_unused(db, storage_name)
     db.query(EventParticipant).filter(EventParticipant.event_id == event_id).delete()
+    db.query(EventMessage).filter(EventMessage.event_id == event_id).delete()
     db.query(Event).filter(Event.id == event_id).delete()
     db.commit()
 
@@ -714,8 +782,19 @@ def _event_detail_response(
         show_edit = request.query_params.get("edit") == "1"
     if error and event.creator_user_id == user.id:
         show_edit = True
+    active_tab = request.query_params.get("tab", "files")
+    if active_tab not in ("files", "chat"):
+        active_tab = "files"
     ctx = _event_detail_context(
-        db, user, event, event_id, error=error, success=success, show_edit=show_edit
+        request,
+        db,
+        user,
+        event,
+        event_id,
+        error=error,
+        success=success,
+        show_edit=show_edit,
+        active_tab=active_tab,
     )
     db.close()
     return templates.TemplateResponse(
@@ -729,6 +808,68 @@ def _event_detail_response(
 @router.get("/cloud/events/{event_id}/", name="event_detail")
 def event_detail_page(request: Request, event_id: int):
     return _event_detail_response(request, event_id)
+
+
+def _user_can_attach_event_chat_file(db, user_id: int, event_id: int, file_id: int) -> bool:
+    own = (
+        db.query(CloudFile)
+        .filter(CloudFile.id == file_id, CloudFile.owner_user_id == user_id)
+        .first()
+    )
+    if own:
+        return True
+    return (
+        db.query(CloudFile)
+        .filter(
+            CloudFile.id == file_id,
+            CloudFile.event_id == event_id,
+            CloudFile.visibility == "event",
+        )
+        .first()
+        is not None
+    )
+
+
+@router.post("/cloud/events/{event_id}/chat/send/", name="event_chat_send")
+def event_chat_send(
+    request: Request,
+    event_id: int,
+    text_message: str = Form(""),
+    file_id: str = Form(""),
+):
+    db = SessionLocal()
+    user = get_current_user(request, db)
+    if not user:
+        db.close()
+        return RedirectResponse(url="/accounts/login/", status_code=status.HTTP_303_SEE_OTHER)
+    event = db.query(Event).filter(Event.id == event_id).first()
+    if not event or not can_access_event(db, user.id, event):
+        db.close()
+        return RedirectResponse(url="/cloud/events/", status_code=status.HTTP_303_SEE_OTHER)
+
+    text_clean = text_message.strip()
+    selected_file_id = int(file_id) if file_id.strip().isdigit() else None
+    chat_url = _event_detail_url(event_id, tab="chat")
+    if not text_clean and not selected_file_id:
+        db.close()
+        return RedirectResponse(url=chat_url, status_code=status.HTTP_303_SEE_OTHER)
+
+    if selected_file_id and not _user_can_attach_event_chat_file(db, user.id, event_id, selected_file_id):
+        db.close()
+        return redirect_with_flash(chat_url, request, error="Нельзя прикрепить этот файл.")
+
+    db.add(
+        EventMessage(
+            event_id=event_id,
+            sender_user_id=user.id,
+            text=text_clean,
+            file_id=selected_file_id,
+            created_at=utc_now().isoformat(),
+        )
+    )
+    db.commit()
+    db.close()
+    return RedirectResponse(url=chat_url, status_code=status.HTTP_303_SEE_OTHER)
 
 
 @router.post("/cloud/events/{event_id}/upload/", name="event_upload")
@@ -908,6 +1049,7 @@ def event_file_delete(request: Request, event_id: int, file_id: int):
 
     file_label = row.file_name
     storage_name = row.storage_name
+    delete_reports_for_file(db, file_id)
     db.delete(row)
     db.commit()
     delete_blob_if_unused(db, storage_name)

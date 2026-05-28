@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FBE cloud — презентация</title>
+  <link rel="icon" type="image/svg+xml" href="../static/favicon.svg">
+  <link rel="stylesheet" href="presentation-theme.css">
+</head>
+<body>
+  <div class="deck" id="deck">
+    <header class="deck-header">
+      <div class="deck-brand">
+        <img src="../logo_FBE.png" alt="FBE cloud">
+        <span>FBE cloud</span>
+      </div>
+      <div class="deck-progress" id="progress">1 / 8</div>
+    </header>
+
+    <div class="deck-viewport">
+      <!-- 1. Титул -->
+      <section class="slide slide-hero active" data-slide="1">
+        <div class="logo-spot">
+          <img src="../logo_FBE.png" alt="Логотип FBE cloud">
+        </div>
+        <h1>Учебные материалы всегда под рукой</h1>
+        <p class="lead">FBE cloud — облако для конспектов, файлов курсов и совместной работы студентов.</p>
+        <p class="hint" style="margin-top:2rem;">v1.72pr · presentation version · 2026</p>
+      </section>
+
+      <!-- 2. О проекте -->
+      <section class="slide" data-slide="2">
+        <h2>О проекте</h2>
+        <p class="lead">Веб-платформа для хранения и обмена учебными материалами в одном месте.</p>
+        <div class="card">
+          <h3>Задача</h3>
+          <p>Разрозненные файлы в мессенджерах и на дисках сложно искать и делить с одногруппниками. FBE cloud объединяет личное хранилище, общее облако и социальные функции.</p>
+        </div>
+      </section>
+
+      <!-- 3. Возможности -->
+      <section class="slide" data-slide="3">
+        <h2>Основные разделы</h2>
+        <div class="feature-grid">
+          <div class="card">
+            <h3>Мои файлы</h3>
+            <p>Личное облако: загрузка, предпросмотр, фильтры и управление своими материалами.</p>
+          </div>
+          <div class="card">
+            <h3>Общее облако</h3>
+            <p>Общая библиотека файлов для всех пользователей с поиском и фильтрацией.</p>
+          </div>
+          <div class="card">
+            <h3>Друзья и чат</h3>
+            <p>Добавление друзей и обмен сообщениями внутри платформы.</p>
+          </div>
+          <div class="card">
+            <h3>События</h3>
+            <p>Экзамены, зачёты и мероприятия — открытые и закрытые, с датами и описанием.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4. Аккаунты -->
+      <section class="slide" data-slide="4">
+        <h2>Аккаунты и безопасность</h2>
+        <ul class="bullets">
+          <li>Регистрация и вход с сессиями</li>
+          <li>Подтверждение e-mail</li>
+          <li>Восстановление пароля</li>
+          <li>Профиль с аватаром и сменой пароля</li>
+          <li>Роли персонала и панель администратора</li>
+        </ul>
+        <div class="card" style="margin-top:1.25rem;">
+          <h3>Админка</h3>
+          <p>Статистика пользователей и управление для сотрудников (personnel).</p>
+        </div>
+      </section>
+
+      <!-- 5. Файлы -->
+      <section class="slide" data-slide="5">
+        <h2>Работа с файлами</h2>
+        <ul class="bullets">
+          <li>Загрузка с лимитами на объём и количество</li>
+          <li>Предпросмотр документов и изображений в браузере</li>
+          <li>Фильтры по типу, дате и названию</li>
+          <li>Интеграция с Google Drive (опционально)</li>
+        </ul>
+        <div class="tag-row">
+          <span class="tag">FastAPI</span>
+          <span class="tag">SQLAlchemy</span>
+          <span class="tag">Jinja2</span>
+        </div>
+      </section>
+
+      <!-- 6. Дизайн -->
+      <section class="slide" data-slide="6">
+        <h2>Дизайн интерфейса</h2>
+        <p class="lead">Тёмная тема в стиле этой презентации и сайта.</p>
+        <div class="feature-grid">
+          <div class="card">
+            <h3>Палитра</h3>
+            <p>Фон #0f1419, поверхности #1a2332, акцент #5b9fd4, текст #e8edf4.</p>
+          </div>
+          <div class="card">
+            <h3>Компоненты</h3>
+            <p>Карточки, кнопки primary/ghost, боковое меню, explorer для файлов.</p>
+          </div>
+          <div class="card">
+            <h3>Шрифт</h3>
+            <p>Segoe UI / system-ui — как на сайте.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 7. Стек -->
+      <section class="slide" data-slide="7">
+        <h2>Технологии</h2>
+        <div class="feature-grid">
+          <div class="card">
+            <h3>Backend</h3>
+            <ul class="bullets">
+              <li>Python, FastAPI, Uvicorn</li>
+              <li>SQLAlchemy, SQLite</li>
+              <li>Session middleware, proxy headers</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>Frontend</h3>
+            <ul class="bullets">
+              <li>Шаблоны Jinja2</li>
+              <li>CSS custom properties</li>
+              <li>Адаптивная вёрстка</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- 8. Финал -->
+      <section class="slide slide-hero" data-slide="8">
+        <div class="logo-spot" style="max-width:200px;">
+          <img src="../static/favicon.svg" alt="" style="filter:none;width:120px;margin:0 auto;">
+        </div>
+        <h1>Спасибо за внимание</h1>
+        <p class="lead">FBE cloud — учебные материалы всегда под рукой.</p>
+        <p style="color:var(--muted);margin-top:2rem;">by Xanlez, 2026</p>
+      </section>
+    </div>
+
+    <footer class="deck-footer">
+      <span class="hint">← → или Пробел · F — полный экран · Ctrl+P — PDF</span>
+      <div class="deck-nav">
+        <button type="button" class="btn btn-ghost" id="prevBtn">Назад</button>
+        <button type="button" class="btn btn-primary" id="nextBtn">Далее</button>
+      </div>
+      <span>FBE cloud v1.72pr</span>
+    </footer>
+  </div>
+
+  <script>
+    (() => {
+      const slides = [...document.querySelectorAll(".slide")];
+      const progress = document.getElementById("progress");
+      const prevBtn = document.getElementById("prevBtn");
+      const nextBtn = document.getElementById("nextBtn");
+      let index = 0;
+
+      const show = (i) => {
+        index = Math.max(0, Math.min(i, slides.length - 1));
+        slides.forEach((s, n) => s.classList.toggle("active", n === index));
+        progress.textContent = `${index + 1} / ${slides.length}`;
+        prevBtn.disabled = index === 0;
+        nextBtn.disabled = index === slides.length - 1;
+      };
+
+      prevBtn.addEventListener("click", () => show(index - 1));
+      nextBtn.addEventListener("click", () => show(index + 1));
+
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowRight" || e.key === " " || e.key === "PageDown") {
+          e.preventDefault();
+          show(index + 1);
+        }
+        if (e.key === "ArrowLeft" || e.key === "PageUp") {
+          e.preventDefault();
+          show(index - 1);
+        }
+        if (e.key === "f" || e.key === "F") {
+          if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen?.();
+          } else {
+            document.exitFullscreen?.();
+          }
+        }
+      });
+
+      show(0);
+    })();
+  </script>
+</body>
+</html>

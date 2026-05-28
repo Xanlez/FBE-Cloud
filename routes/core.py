@@ -5,20 +5,47 @@ from app.admin_stats import load_admin_dashboard
 from app.auth_utils import get_current_user, user_is_personnel
 from app.db_utils import SessionLocal
 from app.settings import BASE_DIR
-from app.user_admin import delete_user_completely, set_user_banned
+from app.user_admin import (
+    delete_cloud_file_by_id,
+    delete_user_completely,
+    set_user_banned,
+    set_user_personnel,
+)
 from app.web import templates
 from models import User
 
 router = APIRouter()
 
 
-def _admin_redirect(request: Request, message: str) -> RedirectResponse:
+def _admin_redirect(request: Request, message: str, *, anchor: str = "admin-users") -> RedirectResponse:
     request.session["admin_message"] = message
-    return RedirectResponse(url="/admin/#admin-users", status_code=status.HTTP_303_SEE_OTHER)
+    return RedirectResponse(
+        url=f"/admin/#{anchor}",
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
 
 
-def _get_actor_and_target(
-    request: Request, user_id: int,
+def _require_personnel(request: Request) -> tuple[User | None, RedirectResponse | None]:
+    db = SessionLocal()
+    try:
+        user = get_current_user(request, db)
+        if not user:
+            return None, RedirectResponse(
+                url="/accounts/login/", status_code=status.HTTP_303_SEE_OTHER
+            )
+        if not user_is_personnel(user):
+            return None, RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
+        return user, None
+    finally:
+        db.close()
+
+
+def _admin_actor_and_target(
+    request: Request,
+    user_id: int,
+    *,
+    allow_self: bool = False,
+    block_personnel: bool = False,
 ) -> tuple[int | None, int | None, str | None, RedirectResponse | None]:
     db = SessionLocal()
     try:
@@ -36,12 +63,12 @@ def _get_actor_and_target(
         if not target:
             return actor.id, None, None, _admin_redirect(request, "Пользователь не найден.")
 
-        if actor.id == target.id:
+        if not allow_self and actor.id == target.id:
             return actor.id, target.id, target.username, _admin_redirect(
                 request, "Нельзя применить действие к своему аккаунту."
             )
 
-        if target.is_personnel:
+        if block_personnel and target.is_personnel:
             return actor.id, target.id, target.username, _admin_redirect(
                 request, "Нельзя применить действие к аккаунту персонала."
             )
@@ -95,7 +122,33 @@ def admin_action(
     action: str = Form(...),
     user_id: int = Form(...),
 ):
-    _actor_id, target_id, username, redirect = _get_actor_and_target(request, user_id)
+    if action in ("grant_personnel", "revoke_personnel"):
+        _actor_id, target_id, username, redirect = _admin_actor_and_target(
+            request, user_id, allow_self=False, block_personnel=False,
+        )
+        if redirect:
+            return redirect
+
+        db = SessionLocal()
+        target = db.query(User).filter(User.id == target_id).first()
+        if action == "grant_personnel":
+            if target.is_personnel:
+                db.close()
+                return _admin_redirect(request, f"{username} уже в персонале.")
+            set_user_personnel(db, target_id, True)
+            db.close()
+            return _admin_redirect(request, f"{username} добавлен в персонал.")
+
+        if not target.is_personnel:
+            db.close()
+            return _admin_redirect(request, f"{username} не в персонале.")
+        set_user_personnel(db, target_id, False)
+        db.close()
+        return _admin_redirect(request, f"{username} исключён из персонала.")
+
+    _actor_id, target_id, username, redirect = _admin_actor_and_target(
+        request, user_id, allow_self=False, block_personnel=True,
+    )
     if redirect:
         return redirect
 
@@ -138,3 +191,21 @@ def admin_user_unban(request: Request, user_id: int):
 @router.post("/admin/users/{user_id}/delete/", name="admin_user_delete")
 def admin_user_delete(request: Request, user_id: int):
     return admin_action(request, action="delete", user_id=user_id)
+
+
+@router.post("/admin/files/{file_id}/delete/", name="admin_file_delete")
+def admin_file_delete(request: Request, file_id: int):
+    _actor, redirect = _require_personnel(request)
+    if redirect:
+        return redirect
+
+    db = SessionLocal()
+    label = delete_cloud_file_by_id(db, file_id)
+    db.close()
+    if not label:
+        return _admin_redirect(request, "Файл не найден.", anchor="admin-files")
+    return _admin_redirect(
+        request,
+        f"Файл «{label}» удалён.",
+        anchor="admin-files",
+    )

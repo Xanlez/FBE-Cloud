@@ -1,11 +1,16 @@
 {% extends "base.html" %}
+{% from "core/macros/file_preview.html" import preview_open_action %}
 
 {% block title %}Админка — FBE cloud{% endblock %}
 {% block main_class %}main-full{% endblock %}
 
 {% block content %}
-<h1 class="page-title">Админка</h1>
-<p class="admin-lead">Обзор системы: пользователи, файлы, события и активность.</p>
+<div class="app-page app-page-wide">
+  <header class="app-page-head app-page-head-compact">
+    <div class="app-page-head-accent" aria-hidden="true"></div>
+    <h1 class="app-page-title">Админка</h1>
+    <p class="app-page-lead admin-lead">Обзор системы: пользователи, файлы, события и активность.</p>
+  </header>
 
 {% if admin_message %}
   <ul class="messages admin-flash"><li class="info">{{ admin_message }}</li></ul>
@@ -25,8 +30,16 @@
     <div class="admin-stat-label">Заблокировано</div>
   </div>
   <div class="admin-stat-card">
+    <div class="admin-stat-value">{{ stats.users_personnel }}</div>
+    <div class="admin-stat-label">Персонал</div>
+  </div>
+  <div class="admin-stat-card">
     <div class="admin-stat-value">{{ stats.files_count }}</div>
     <div class="admin-stat-label">Записей файлов</div>
+  </div>
+  <div class="admin-stat-card{% if stats.files_reported %} admin-stat-card-warn{% endif %}">
+    <div class="admin-stat-value">{% if stats.files_reported %}⚠ {% endif %}{{ stats.files_reported }}</div>
+    <div class="admin-stat-label">Файлов с жалобами ({{ stats.file_reports_total }} жалоб)</div>
   </div>
   <div class="admin-stat-card">
     <div class="admin-stat-value">{{ stats.files_total_bytes|bytes_hr }}</div>
@@ -81,7 +94,6 @@
           <th>Подтверждён</th>
           <th>Статус</th>
           <th>Персонал</th>
-          <th>Staff</th>
           <th>Действия</th>
         </tr>
       </thead>
@@ -99,12 +111,32 @@
                 <span class="admin-badge admin-badge-ok">активен</span>
               {% endif %}
             </td>
-            <td>{% if u.is_personnel %}✓{% else %}—{% endif %}</td>
-            <td>{% if u.is_staff %}✓{% else %}—{% endif %}</td>
-            <td class="admin-actions">
-              {% if u.id == user.id or u.is_personnel %}
-                <span class="admin-muted">—</span>
+            <td>
+              {% if u.is_personnel %}
+                <span class="admin-badge admin-badge-staff">да</span>
               {% else %}
+                <span class="admin-muted">—</span>
+              {% endif %}
+            </td>
+            <td class="admin-actions">
+              {% if u.id == user.id %}
+                <span class="admin-muted">это вы</span>
+              {% elif u.is_personnel %}
+                <form
+                  method="post"
+                  action="/admin/"
+                  onsubmit="return confirm('Исключить {{ u.username }} из персонала? Доступ к админке будет отозван.');"
+                >
+                  <input type="hidden" name="action" value="revoke_personnel">
+                  <input type="hidden" name="user_id" value="{{ u.id }}">
+                  <button type="submit" class="btn btn-ghost btn-sm admin-btn-personnel-revoke">Исключить из персонала</button>
+                </form>
+              {% else %}
+                <form method="post" action="/admin/">
+                  <input type="hidden" name="action" value="grant_personnel">
+                  <input type="hidden" name="user_id" value="{{ u.id }}">
+                  <button type="submit" class="btn btn-ghost btn-sm admin-btn-personnel-grant">В персонал</button>
+                </form>
                 {% if u.is_banned %}
                   <form method="post" action="/admin/">
                     <input type="hidden" name="action" value="unban">
@@ -127,7 +159,7 @@
             </td>
           </tr>
         {% else %}
-          <tr><td colspan="8">Нет пользователей</td></tr>
+          <tr><td colspan="7">Нет пользователей</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -136,6 +168,7 @@
 
 <div class="card admin-section" id="admin-files">
   <h2>Файлы ({{ files|length }})</h2>
+  <p class="admin-section-hint">Файлы с жалобами — в начале списка. Просмотрите контент и при необходимости удалите.</p>
   <div class="admin-table-wrap">
     <table class="explorer-table admin-table">
       <thead>
@@ -148,22 +181,52 @@
           <th>Размер</th>
           <th>Дата</th>
           <th>Хранение</th>
+          <th>Действия</th>
         </tr>
       </thead>
       <tbody>
         {% for f in files %}
-          <tr>
+          <tr{% if f.report_count %} class="admin-file-row-reported"{% endif %}>
             <td>{{ f.id }}</td>
-            <td class="admin-cell-name" title="{{ f.file_name }}">{{ f.file_name }}</td>
+            <td class="admin-cell-name">
+              <span class="admin-cell-name-inner">
+                {% if f.report_count %}
+                  <span class="admin-file-report-badge" title="Жалобы пользователей">⚠ {{ f.report_count }}</span>
+                {% endif %}
+                <span class="admin-file-name-text" title="{{ f.file_name }}">{{ f.file_name }}</span>
+              </span>
+            </td>
             <td>{{ f.owner_username }}</td>
             <td>{{ f.visibility_label }}</td>
             <td>{{ f.event_title }}</td>
             <td>{{ f.size_bytes|bytes_hr }}</td>
             <td>{{ f.created_at[:16].replace('T', ' ') }}</td>
             <td>{% if f.storage_name %}локально{% elif f.web_view_link %}ссылка{% else %}—{% endif %}</td>
+            <td class="admin-actions admin-file-actions">
+              {% if f|can_preview_file or f.storage_name or f.web_view_link %}
+                {{ preview_open_action(f, request) }}
+                {% if f.storage_name or f.web_view_link %}
+                  <a
+                    href="{% if f.storage_name %}{{ path_for(request, 'cloud_file_download', file_id=f.id) }}{% else %}{{ f.web_view_link }}{% endif %}"
+                    class="btn btn-ghost btn-sm"
+                    title="Скачать"
+                    {% if f.web_view_link and not f.storage_name %}target="_blank" rel="noopener"{% endif %}
+                  >↓</a>
+                {% endif %}
+              {% else %}
+                <span class="admin-muted">—</span>
+              {% endif %}
+              <form
+                method="post"
+                action="{{ path_for(request, 'admin_file_delete', file_id=f.id) }}"
+                onsubmit="return confirm('Удалить файл «{{ f.file_name }}»? Это необратимо.');"
+              >
+                <button type="submit" class="btn btn-ghost btn-sm admin-btn-danger" title="Удалить">✕</button>
+              </form>
+            </td>
           </tr>
         {% else %}
-          <tr><td colspan="8">Нет файлов</td></tr>
+          <tr><td colspan="9">Нет файлов</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -231,4 +294,6 @@
   </div>
 </div>
 {% endif %}
+
+</div>
 {% endblock %}

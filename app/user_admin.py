@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.file_storage import delete_blob_if_unused
 from app.settings import UPLOADS_DIR
+from app.file_reports import delete_reports_for_file, delete_reports_by_reporter
 from models import (
     CloudFile,
     Event,
@@ -14,7 +15,22 @@ from models import (
 )
 
 
+def delete_cloud_file_by_id(db: Session, file_id: int) -> str | None:
+    row = db.query(CloudFile).filter(CloudFile.id == file_id).first()
+    if not row:
+        return None
+    label = row.file_name
+    db.query(Message).filter(Message.file_id == file_id).update(
+        {Message.file_id: None},
+        synchronize_session=False,
+    )
+    _delete_file_row(db, row)
+    db.commit()
+    return label
+
+
 def _delete_file_row(db: Session, row: CloudFile) -> None:
+    delete_reports_for_file(db, row.id)
     storage_name = row.storage_name
     db.delete(row)
     db.flush()
@@ -64,6 +80,7 @@ def delete_user_completely(db: Session, user_id: int) -> bool:
         if avatar_path.is_file():
             avatar_path.unlink()
 
+    delete_reports_by_reporter(db, user_id)
     db.delete(user)
     db.commit()
     return True
@@ -74,6 +91,16 @@ def set_user_banned(db: Session, user_id: int, banned: bool) -> User | None:
     if not user:
         return None
     user.is_banned = banned
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+def set_user_personnel(db: Session, user_id: int, personnel: bool) -> User | None:
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        return None
+    user.is_personnel = personnel
     db.commit()
     db.refresh(user)
     return user

@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, Integer, String
+from sqlalchemy import Boolean, Column, Integer, String, UniqueConstraint
 from sqlalchemy.orm import declarative_base
 
 Base = declarative_base()
@@ -86,4 +86,27 @@ class Message(Base):
     receiver_user_id = Column(Integer, nullable=False, index=True)
     text = Column(String(2000), nullable=True)
     file_id = Column(Integer, nullable=True, index=True)
+    created_at = Column(String(40), nullable=False)
+
+
+class EventMessage(Base):
+    __tablename__ = "event_messages"
+
+    id = Column(Integer, primary_key=True, index=True)
+    event_id = Column(Integer, nullable=False, index=True)
+    sender_user_id = Column(Integer, nullable=False, index=True)
+    text = Column(String(2000), nullable=True)
+    file_id = Column(Integer, nullable=True, index=True)
+    created_at = Column(String(40), nullable=False)
+
+
+class FileReport(Base):
+    __tablename__ = "file_reports"
+    __table_args__ = (
+        UniqueConstraint("file_id", "reporter_user_id", name="uq_file_report_reporter"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    file_id = Column(Integer, nullable=False, index=True)
+    reporter_user_id = Column(Integer, nullable=False, index=True)
     created_at = Column(String(40), nullable=False)

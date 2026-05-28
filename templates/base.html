@@ -1,4 +1,5 @@
 ﻿{% from "core/macros/demo_push.html" import demo_push_notice %}
+{% from "core/macros/file_preview.html" import file_preview_modal, file_preview_script %}
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -6,7 +7,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}FBE cloud{% endblock %}</title>
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
-  <link rel="stylesheet" href="/static/css/app.css?v=40">
+  <link rel="stylesheet" href="/static/css/app.css?v=67">
+  <script src="/static/js/motion.js" defer></script>
 </head>
 <body>
   <header class="site-header">
@@ -41,11 +43,13 @@
   </header>
   <div class="site-body">
     <main class="{% block main_class %}{% endblock %}">
-      {% if user %}
-        <div class="demo-push-wrap">
-          {{ demo_push_notice() }}
-        </div>
-      {% endif %}
+      {% block demo_push %}
+        {% if user %}
+          <div class="demo-push-wrap">
+            {{ demo_push_notice() }}
+          </div>
+        {% endif %}
+      {% endblock %}
       {% block content %}{% endblock %}
     </main>
     <footer class="site-footer">
@@ -53,6 +57,8 @@
       <div>by Xanlez, 2026</div>
     </footer>
   </div>
+  {{ file_preview_modal() }}
+  {{ file_preview_script() }}
   {% if user %}
     <div class="menu-backdrop" id="menuBackdrop"></div>
     <aside class="menu-drawer" id="sideMenu" aria-hidden="true">
